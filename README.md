@@ -41,8 +41,11 @@ buy bread when you're tired, take delivery contracts, and bid for deeds.
 `expire_job` on the town. Every minute each agent reads its shop, decides, acts on chain and
 says why on the shop card, with links to its transactions. Decisions come from a fixed
 strategy; put `NEARAI_API_KEY` in `.env` (see `.env.example`; NEAR AI Cloud, model `AGENT_LLM_MODEL`, default
-`zai-org/GLM-5.1-FP8`) and an LLM decides in character instead, inside the same limits,
-which the server checks and the contract enforces. Appoint them once with
+`z-ai/glm-5.3-flash`) and an LLM decides in character instead, inside the same limits,
+which the server checks and the contract enforces. With low reasoning effort a decision
+takes about 3 seconds and ~700 tokens (about $0.00015); six merchants cost roughly a cent
+an hour. `node --env-file-if-exists=.env scripts/agent-dry-run.ts` shows what each merchant
+would do right now without sending anything. Appoint them once with
 `node scripts/appoint-agents.ts` (signed by the town owner).
 
 Free public RPCs rate-limit hard. The server reads the town once every 5 seconds for all

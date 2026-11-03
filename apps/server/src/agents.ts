@@ -15,7 +15,8 @@ const RAW: Item[] = ['wood', 'ore', 'wheat'];
 
 const LLM_URL = process.env.AGENT_LLM_URL ?? 'https://cloud-api.near.ai/v1/chat/completions';
 const LLM_KEY = process.env.NEARAI_API_KEY ?? process.env.AGENT_LLM_KEY;
-const LLM_MODEL = process.env.AGENT_LLM_MODEL ?? 'zai-org/GLM-5.1-FP8';
+// GLM 5.3 Flash: hosted by NEAR AI, 6/6 valid decisions in dry runs, ~$0.0003 per decision.
+const LLM_MODEL = process.env.AGENT_LLM_MODEL ?? 'z-ai/glm-5.3-flash';
 const TICK_MS = Number(process.env.AGENT_TICK_MS ?? 60_000);
 const SPEAK_EVERY_MS = Number(process.env.AGENT_SPEAK_MS ?? 10 * 60_000);
 const AGENT_METHODS = ['set_target', 'post_job', 'expire_job'];
@@ -140,7 +141,7 @@ function limits(s: ShopView, item: Item, params: { job_trigger_bps: number; job_
 }
 
 /** The always-on strategy: chase inputs when short, discount gluts, drift home otherwise. */
-function decideByRules(s: ShopView, jobs: Job[], params: any): Decision {
+export function decideByRules(s: ShopView, jobs: Job[], params: any): Decision {
   const acts: Action[] = [];
   const notes: string[] = [];
   const traded = ITEMS.filter(i => s.shop.genesis_target[ITEMS.indexOf(i)] > 0);
@@ -185,8 +186,12 @@ function decideByRules(s: ShopView, jobs: Job[], params: any): Decision {
 }
 
 /** Ask the LLM to decide in character, within the same limits. Returns null on any failure. */
-async function decideByLLM(s: ShopView, jobs: Job[], params: any, town: any, suggestion: Decision): Promise<Decision | null> {
+export async function decideByLLM(s: ShopView, jobs: Job[], params: any, town: any, suggestion: Decision, usage?: { tokens: number }): Promise<Decision | null> {
   if (!LLM_KEY) return null;
+  return (await askLLM(s, jobs, params, town, suggestion, usage)) ?? (await askLLM(s, jobs, params, town, suggestion, usage));
+}
+
+async function askLLM(s: ShopView, jobs: Job[], params: any, town: any, suggestion: Decision, usage?: { tokens: number }): Promise<Decision | null> {
   const traded = ITEMS.filter(i => s.shop.genesis_target[ITEMS.indexOf(i)] > 0);
   const state = {
     shop: s.shop.name,
@@ -196,6 +201,7 @@ async function decideByLLM(s: ShopView, jobs: Job[], params: any, town: any, sug
       const i = ITEMS.indexOf(item);
       return {
         item, stock: L.stock, target: L.target, target_allowed: [L.minTarget, L.maxTarget],
+        situation: L.stock < L.target * 0.5 ? 'short' : L.stock > L.target * 2 ? 'glutted' : 'near target',
         you_buy: s.shop.buys.includes(item), you_sell: s.shop.sells.includes(item),
         your_bid: m(s.bid[i]), your_ask: m(s.ask[i]),
         contract_allowed: L.jobAllowed, contract_max_quantity: L.maxJobQty, contract_max_unit_price_micro: String(L.maxJobPrice),
@@ -205,9 +211,11 @@ async function decideByLLM(s: ShopView, jobs: Job[], params: any, town: any, sug
     town: { day: town.day, festival_progress: `${m(town.week_counted)}/${m(town.week_target)}` },
   };
   const system = `You are ${PERSONAS[s.shop.id].voice}, running a shop in Meridian Town, a market game on NEAR.
-Prices follow a fixed rule: price = base × (2·target ÷ (stock + target))². Raising your target raises what you pay and charge; lowering it does the opposite.
+Prices follow a fixed rule: price = base × (2·target ÷ (stock + target))². Your target moves BOTH of your prices at once: raising it makes you pay more for what you buy AND charge more for what you sell.
+So: when a good is "short" and you need it, raise its target or post a contract. When a good is "glutted", lower its target so it moves and you stop buying more. Never raise the target of a glutted good.
 You may only: set_target (within target_allowed), post_job (a delivery contract for a raw good you buy, only where contract_allowed, quantity ≤ contract_max_quantity, unit_price_micro ≤ contract_max_unit_price_micro, hours 1), expire_job (your expired contracts). You may also do nothing.
 Keep your shop solvent: upkeep is 25 MERI a day and you close after two missed days.
+Your "say" line must describe only the actions in your actions list; if you do nothing, say that in character. You can't post a second contract for a good that already has one open.
 Reply with JSON only: {"say": "<one line in character, under 140 characters, to show players>", "reasoning": "<one plain sentence>", "actions": [ ... ]}.
 Action shapes: {"type":"set_target","item":"ore","target":33} | {"type":"post_job","item":"ore","quantity":12,"unit_price":"<micro-MERI string>","hours":1} | {"type":"expire_job","job_id":4}`;
   try {
@@ -217,7 +225,9 @@ Action shapes: {"type":"set_target","item":"ore","target":33} | {"type":"post_jo
       body: JSON.stringify({
         model: LLM_MODEL,
         temperature: 0.7,
-        max_tokens: 2000,
+        // Hidden reasoning shares this budget; keep effort low so the JSON isn't cut off.
+        max_tokens: 4000,
+        reasoning_effort: process.env.AGENT_REASONING_EFFORT ?? 'low',
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: `Your shop right now:\n${JSON.stringify(state, null, 1)}\n\nA cautious clerk suggests: ${JSON.stringify(suggestion.actions)}. Decide.` },
@@ -227,10 +237,18 @@ Action shapes: {"type":"set_target","item":"ore","target":33} | {"type":"post_jo
     });
     if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0, 200)}`);
     const body = await res.json();
+    if (usage) usage.tokens += body.usage?.total_tokens ?? 0;
     const text: string = body.choices?.[0]?.message?.content ?? '';
     const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
     const d = JSON.parse(json) as Decision;
-    return { say: String(d.say ?? '').slice(0, 180), reasoning: String(d.reasoning ?? '').slice(0, 300), actions: validate(s, jobs, params, d.actions ?? []) };
+    const proposed = Array.isArray(d.actions) ? d.actions : [];
+    const allowed = validate(s, jobs, params, proposed);
+    const refused = proposed.length - allowed.length;
+    return {
+      say: String(d.say ?? '').slice(0, 180),
+      reasoning: String(d.reasoning ?? '').slice(0, 300) + (refused ? ` (${refused} proposed move${refused > 1 ? 's were' : ' was'} outside its limits and refused.)` : ''),
+      actions: allowed,
+    };
   } catch (e) {
     console.warn(`LLM decision for ${s.shop.id} failed:`, e instanceof Error ? e.message : e);
     return null;
@@ -243,7 +261,8 @@ function validate(s: ShopView, jobs: Job[], params: any, proposed: Action[]): Ac
   for (const a of proposed.slice(0, 6)) {
     if (a.type === 'set_target' && ITEMS.includes(a.item)) {
       const L = limits(s, a.item, params);
-      if (L.genesis > 0) ok.push({ ...a, target: Math.max(L.minTarget, Math.min(L.maxTarget, Math.round(a.target))) });
+      const target = Math.max(L.minTarget, Math.min(L.maxTarget, Math.round(a.target)));
+      if (L.genesis > 0 && target !== L.target) ok.push({ ...a, target });
     } else if (a.type === 'post_job' && ITEMS.includes(a.item)) {
       const L = limits(s, a.item, params);
       const price = BigInt(String(a.unit_price ?? '0').split('.')[0] || '0');
