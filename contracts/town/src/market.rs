@@ -192,6 +192,11 @@ impl Town {
             .collect()
     }
 
+    /// Genesis and day length, so clients can show a live market clock.
+    pub fn get_clock(&self) -> (u64, u64, u64) {
+        (self.genesis_ns / 1_000_000, self.params.day_ms, env::block_timestamp_ms())
+    }
+
     pub fn get_town(&self) -> TownView {
         let mut grounds = [0u64; 3];
         for (i, g) in grounds.iter_mut().enumerate() {

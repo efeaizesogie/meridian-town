@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { Account, JsonRpcProvider, PublicKey, actions, nearToYocto, teraToGas } from 'near-api-js';
 
 export const NETWORK = process.env.NEAR_NETWORK ?? 'testnet';
-export const RPC = process.env.NEAR_RPC ?? `https://rpc.${NETWORK}.near.org`;
+export const RPC = process.env.NEAR_RPC ?? (NETWORK === 'mainnet' ? 'https://rpc.mainnet.fastnear.com' : 'https://test.rpc.fastnear.com');
 export const TOWN = process.env.TOWN_CONTRACT ?? 'town.efecode.testnet';
 export const GAME = process.env.GAME_ACCOUNT ?? 'game.efecode.testnet';
 
@@ -81,6 +81,10 @@ export async function gatherBatch(orders: GatherOrder[]): Promise<number[]> {
     args: { orders },
     gas: teraToGas(150),
   });
+}
+
+export async function advanceTown() {
+  await game.callFunction({ contractId: TOWN, methodName: 'advance', args: {}, gas: teraToGas(300) });
 }
 
 /** A finished, successful `use_item` call by `accountId` on the town, or null. */

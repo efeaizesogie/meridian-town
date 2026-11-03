@@ -6,7 +6,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PublicKey } from 'near-api-js';
-import { GAME, NETWORK, RPC, TOWN, accountExists, createPlayer, gatherBatch, hasKey, verifyUseItem, view, type GatherOrder } from './chain.ts';
+import { GAME, NETWORK, RPC, TOWN, accountExists, advanceTown, createPlayer, gatherBatch, hasKey, verifyUseItem, view, type GatherOrder } from './chain.ts';
 import * as players from './players.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -142,6 +142,20 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
 
   throw new HttpError(404, 'not found');
 }
+
+// ---------- keeper: run the town clock so Festivals and auctions settle on time ----------
+
+setInterval(async () => {
+  try {
+    const t = await view<{ day: number; processed_days: number }>('get_town');
+    if (t.day > t.processed_days) {
+      await advanceTown();
+      console.log(`advanced town to day ${t.day}`);
+    }
+  } catch (e) {
+    console.error('keeper', e instanceof Error ? e.message : e);
+  }
+}, 30_000).unref();
 
 // ---------- static files (the built web client) ----------
 

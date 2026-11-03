@@ -3,7 +3,7 @@
 // Defaults to town.efecode.testnet on testnet.
 const contract = process.argv[2] ?? 'town.efecode.testnet';
 const network = process.argv[3] ?? 'testnet';
-const RPC = network === 'mainnet' ? 'https://rpc.mainnet.near.org' : 'https://rpc.testnet.near.org';
+const RPC = network === 'mainnet' ? 'https://rpc.mainnet.fastnear.com' : 'https://test.rpc.fastnear.com';
 const ITEMS = ['wood', 'ore', 'wheat', 'bread', 'tool'];
 const meri = (x: string | number) => Number(x) / 1e6;
 
