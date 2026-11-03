@@ -28,7 +28,7 @@ node --test packages/economy/test/*.test.ts
 ```bash
 npm install
 npm run build -w apps/web
-node apps/server/src/main.ts      # http://localhost:8787
+node --env-file-if-exists=.env apps/server/src/main.ts   # http://localhost:8787
 ```
 
 Pick a name and you're in: the server creates `<name>.game.efecode.testnet` with a key that
@@ -40,7 +40,7 @@ buy bread when you're tired, take delivery contracts, and bid for deeds.
 (`hilde.game.efecode.testnet` and so on) whose only key can call `set_target`, `post_job` and
 `expire_job` on the town. Every minute each agent reads its shop, decides, acts on chain and
 says why on the shop card, with links to its transactions. Decisions come from a fixed
-strategy; set `NEARAI_API_KEY` (NEAR AI Cloud, model `AGENT_LLM_MODEL`, default
+strategy; put `NEARAI_API_KEY` in `.env` (see `.env.example`; NEAR AI Cloud, model `AGENT_LLM_MODEL`, default
 `zai-org/GLM-5.1-FP8`) and an LLM decides in character instead, inside the same limits,
 which the server checks and the contract enforces. Appoint them once with
 `node scripts/appoint-agents.ts` (signed by the town owner).

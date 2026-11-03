@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/main.ts",
-    "start": "node src/main.ts"
+    "dev": "node --env-file-if-exists=../../.env --watch src/main.ts",
+    "start": "node --env-file-if-exists=../../.env src/main.ts"
   },
   "dependencies": {
     "near-api-js": "7.4.0",
