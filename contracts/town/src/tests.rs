@@ -262,6 +262,27 @@ fn production_turns_inputs_into_goods() {
     assert_eq!(t.items_of(&sub("baker"), Item::Bread), 120);
 }
 
+#[test]
+fn using_bread_burns_it() {
+    let mut t = genesis();
+    as_("server.testnet", T0);
+    t.gather(acc("ada.testnet"), Item::Wheat, 40);
+    as_("ada.testnet", T0 + 1);
+    t.sell("granary".into(), Item::Wheat, 40, U128(0));
+    let cost = t.quote_buy("baker".into(), Item::Bread, 2).0;
+    t.buy("baker".into(), Item::Bread, 2, U128(cost));
+    t.use_item(Item::Bread, 2);
+    assert_eq!(t.items_of(&acc("ada.testnet"), Item::Bread), 0);
+}
+
+#[test]
+#[should_panic(expected = "only bread and tools can be used")]
+fn raw_goods_cant_be_used() {
+    let mut t = genesis();
+    as_("ada.testnet", T0 + 1);
+    t.use_item(Item::Ore, 1);
+}
+
 // ---------- deeds ----------
 
 /// Give a player coins from the outside traders (test setup only).

@@ -1,0 +1,13 @@
+{
+  "name": "@meridian/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/main.ts",
+    "start": "node src/main.ts"
+  },
+  "dependencies": {
+    "near-api-js": "7.4.0",
+    "@meridian/economy": "*"
+  }
+}

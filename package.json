@@ -7,6 +7,12 @@
   },
   "scripts": {
     "sim": "node sim/run.ts",
-    "test": "node --test packages/economy/test/*.test.ts"
-  }
+    "test": "node --test packages/economy/test/*.test.ts",
+    "server": "npm run dev -w apps/server",
+    "web": "npm run dev -w apps/web"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ]
 }

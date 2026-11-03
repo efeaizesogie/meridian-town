@@ -111,6 +111,16 @@ impl Town {
         orders.into_iter().map(|o| self.gather_one(&o.player, o.item, o.quantity)).collect()
     }
 
+    /// Use up goods: bread restores stamina, a tool lasts a number of swings. The game
+    /// server credits the effect once it has seen this transaction succeed.
+    pub fn use_item(&mut self, item: Item, quantity: u32) {
+        require!(matches!(item, Item::Bread | Item::Tool), "only bread and tools can be used");
+        require!(quantity >= 1 && quantity <= 20, "use 1 to 20 at a time");
+        let player = env::predecessor_account_id();
+        self.burn_items(&player, item, quantity as u64, "used");
+        events::town("item_used", json!({ "player": player, "item": item.id(), "quantity": quantity }));
+    }
+
     /// Anyone can push the town's clock forward (upkeep, production, festival).
     pub fn advance(&mut self) -> u32 {
         self.catch_up();

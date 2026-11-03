@@ -6,3 +6,5 @@ target/
 sim/out/
 *.log
 .DS_Store
+apps/server/data/
+apps/web/dist/
