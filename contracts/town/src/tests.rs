@@ -2,6 +2,10 @@ use near_sdk::json_types::U128;
 use near_sdk::test_utils::VMContextBuilder;
 use near_sdk::{testing_env, AccountId, NearToken};
 
+use near_contract_standards::non_fungible_token::core::NonFungibleTokenCore;
+use near_contract_standards::non_fungible_token::enumeration::NonFungibleTokenEnumeration;
+
+use crate::deeds::AuctionKind;
 use crate::params::{Item, MICRO};
 use crate::{sub, Town};
 
@@ -33,7 +37,7 @@ fn genesis() -> Town {
 
 /// Every coin must sit in a known account: players, shops, treasury, outside, escrow, festival pool.
 fn assert_conserved(t: &Town, players: &[&str]) {
-    let mut known: Vec<AccountId> = vec![town_id(), sub("outside"), sub("escrow"), sub("festival")];
+    let mut known: Vec<AccountId> = vec![town_id(), sub("outside"), sub("escrow"), sub("festival"), sub("auction")];
     known.extend(t.shops.keys().map(|id| sub(id)));
     known.extend(players.iter().map(|p| acc(p)));
     let sum: u128 = known.iter().map(|a| t.coin_of(a)).sum();
@@ -256,4 +260,183 @@ fn production_turns_inputs_into_goods() {
     assert_eq!(t.items_of(&sub("smith"), Item::Tool), 50);
     assert_eq!(t.items_of(&sub("smith"), Item::Wood), 0);
     assert_eq!(t.items_of(&sub("baker"), Item::Bread), 120);
+}
+
+// ---------- deeds ----------
+
+/// Give a player coins from the outside traders (test setup only).
+fn fund(t: &mut Town, who: &str, meri: u128) {
+    t.move_coin(&sub("outside"), &acc(who), meri * MICRO, "test funding");
+}
+
+/// Run the clock to the end of market day `day` (0-based).
+fn run_to_day(t: &mut Town, day: u64) {
+    as_("keeper.testnet", T0 + (day + 1) * DAY_NS + 1);
+    t.advance();
+}
+
+/// Sell a town-held deed to `who` through a town sale auction ending on `end_day`.
+fn buy_deed(t: &mut Town, shop: &str, who: &str, meri: u128, end_day: u64) {
+    as_("owner.testnet", T0 + (end_day - 1) * DAY_NS + 10);
+    t.auction_deed(shop.into());
+    as_(who, T0 + (end_day - 1) * DAY_NS + 20);
+    t.bid_for_deed(shop.into(), U128(meri * MICRO));
+    run_to_day(t, end_day);
+    assert_eq!(t.deed_owner(shop), acc(who));
+}
+
+#[test]
+fn genesis_mints_six_deeds_to_the_town() {
+    let t = genesis();
+    assert_eq!(t.nft_total_supply(), U128(6));
+    assert_eq!(t.nft_supply_for_owner(town_id()), U128(6));
+    let deed = t.nft_token("smith".into()).unwrap();
+    let m = deed.metadata.unwrap();
+    assert_eq!(m.title.unwrap(), "Deed: Hilde's Forge");
+    assert!(m.extra.unwrap().contains(r#""cash":"1500000000""#), "live cash in the token");
+    assert!(m.media.unwrap().starts_with("data:image/svg+xml"));
+}
+
+#[test]
+fn the_town_sells_a_deed_to_the_highest_bidder() {
+    let mut t = genesis();
+    fund(&mut t, "ada.testnet", 1_000);
+    fund(&mut t, "bob.testnet", 1_000);
+    as_("owner.testnet", T0 + 10);
+    t.auction_deed("store".into());
+
+    as_("ada.testnet", T0 + 20);
+    t.bid_for_deed("store".into(), U128(300 * MICRO));
+    as_("bob.testnet", T0 + 30);
+    t.bid_for_deed("store".into(), U128(320 * MICRO));
+    assert_eq!(t.coin_of(&acc("ada.testnet")), 1_000 * MICRO, "outbid bidder refunded at once");
+    assert_eq!(t.coin_of(&sub("auction")), 320 * MICRO);
+
+    let treasury = t.coin_of(&town_id());
+    run_to_day(&mut t, 1);
+    assert_eq!(t.deed_owner("store"), acc("bob.testnet"));
+    assert!(t.coin_of(&town_id()) >= treasury + 320 * MICRO, "sale proceeds go to the treasury");
+    assert!(t.get_auctions().is_empty());
+    assert!(t.shop("store").open);
+    assert_conserved(&t, &["ada.testnet", "bob.testnet"]);
+}
+
+#[test]
+#[should_panic(expected = "bid must be at least")]
+fn bids_must_beat_the_last_by_five_percent() {
+    let mut t = genesis();
+    fund(&mut t, "ada.testnet", 1_000);
+    fund(&mut t, "bob.testnet", 1_000);
+    as_("owner.testnet", T0 + 10);
+    t.auction_deed("store".into());
+    as_("ada.testnet", T0 + 20);
+    t.bid_for_deed("store".into(), U128(300 * MICRO));
+    as_("bob.testnet", T0 + 30);
+    t.bid_for_deed("store".into(), U128(314 * MICRO));
+}
+
+#[test]
+fn a_bankrupt_shop_is_forfeited_auctioned_and_reopened_by_the_winner() {
+    let mut t = genesis();
+    fund(&mut t, "bob.testnet", 1_000);
+    fund(&mut t, "cy.testnet", 1_000);
+    buy_deed(&mut t, "store", "bob.testnet", 300, 1);
+    as_("bob.testnet", T0 + DAY_NS * 2 + 5);
+    t.set_agent("store".into(), Some(acc("mabel.agent.testnet")));
+
+    // Drain the till: two missed upkeeps close the shop.
+    let cash = t.coin_of(&sub("store"));
+    t.move_coin(&sub("store"), &sub("outside"), cash - 10 * MICRO, "test drain");
+    run_to_day(&mut t, 3);
+    assert!(!t.shop("store").open);
+    assert_eq!(t.deed_owner("store"), town_id(), "deed forfeited");
+    assert_eq!(t.shop("store").agent, None, "old agent loses control");
+    assert_eq!(t.get_auctions()[0].kind, AuctionKind::Bankruptcy);
+
+    as_("cy.testnet", T0 + DAY_NS * 4 + 5);
+    t.bid_for_deed("store".into(), U128(400 * MICRO));
+    run_to_day(&mut t, 4);
+    assert_eq!(t.deed_owner("store"), acc("cy.testnet"));
+    assert!(t.shop("store").open);
+    assert_eq!(t.coin_of(&sub("store")), (410 - 25) * MICRO, "the winning bid recapitalises the till, less that day's upkeep");
+    assert_conserved(&t, &["bob.testnet", "cy.testnet"]);
+}
+
+#[test]
+fn nobody_bids_so_the_town_rescues_the_shop() {
+    let mut t = genesis();
+    let cash = t.coin_of(&sub("store"));
+    t.move_coin(&sub("store"), &sub("outside"), cash, "test drain");
+    run_to_day(&mut t, 1);
+    assert!(!t.shop("store").open);
+    run_to_day(&mut t, 2);
+    assert!(!t.shop("store").open, "still waiting for bids");
+    run_to_day(&mut t, 3);
+    assert!(t.shop("store").open);
+    assert_eq!(t.coin_of(&sub("store")), (600 - 25) * MICRO, "2 x reserve, less that day's upkeep");
+    assert_eq!(t.deed_owner("store"), town_id());
+    assert_conserved(&t, &[]);
+}
+
+#[test]
+fn dividends_go_to_whoever_holds_the_deed() {
+    let mut t = genesis();
+    fund(&mut t, "bob.testnet", 1_000);
+    buy_deed(&mut t, "smith", "bob.testnet", 300, 1);
+    let bob = t.coin_of(&acc("bob.testnet"));
+    // A windfall day for the smith: 5,000 MERI on top of its start-of-day cash.
+    t.move_coin(&sub("outside"), &sub("smith"), 5_000 * MICRO, "test windfall");
+    run_to_day(&mut t, 2);
+    let paid = t.coin_of(&acc("bob.testnet")) - bob;
+    assert!(paid > 0);
+    let after = t.coin_of(&sub("smith"));
+    assert!(after <= 2_000 * MICRO, "everything above the 2,000 ceiling is paid out (till {after})");
+    assert_eq!(t.shop("smith").dividends_paid.0, paid);
+    assert_conserved(&t, &["bob.testnet"]);
+}
+
+#[test]
+fn transferring_a_deed_hands_over_control() {
+    let mut t = genesis();
+    fund(&mut t, "bob.testnet", 1_000);
+    buy_deed(&mut t, "smith", "bob.testnet", 300, 1);
+    as_("bob.testnet", T0 + DAY_NS * 2 + 5);
+    t.set_agent("smith".into(), Some(acc("hilde.agent.testnet")));
+    t.nft_transfer(acc("cy.testnet"), "smith".into(), None, None);
+    assert_eq!(t.deed_owner("smith"), acc("cy.testnet"));
+    assert_eq!(t.shop("smith").agent, None, "the old holder's agent is out");
+    as_("cy.testnet", T0 + DAY_NS * 2 + 6);
+    t.set_agent("smith".into(), Some(acc("cy.agent.testnet")));
+    assert_eq!(t.shop("smith").agent, Some(acc("cy.agent.testnet")));
+}
+
+#[test]
+#[should_panic(expected = "only the deed holder appoints the agent")]
+fn the_old_holder_cant_appoint_agents() {
+    let mut t = genesis();
+    fund(&mut t, "bob.testnet", 1_000);
+    buy_deed(&mut t, "smith", "bob.testnet", 300, 1);
+    as_("bob.testnet", T0 + DAY_NS * 2 + 5);
+    t.nft_transfer(acc("cy.testnet"), "smith".into(), None, None);
+    t.set_agent("smith".into(), Some(acc("bob.agent.testnet")));
+}
+
+#[test]
+#[should_panic(expected = "only the deed holder appoints the agent")]
+fn the_operator_cant_take_over_a_players_shop() {
+    let mut t = genesis();
+    fund(&mut t, "bob.testnet", 1_000);
+    buy_deed(&mut t, "smith", "bob.testnet", 300, 1);
+    as_("owner.testnet", T0 + DAY_NS * 2 + 5);
+    t.set_agent("smith".into(), Some(acc("owner.testnet")));
+}
+
+#[test]
+#[should_panic(expected = "this deed is at auction")]
+fn deeds_at_auction_cant_be_transferred() {
+    let mut t = genesis();
+    as_("owner.testnet", T0 + 10);
+    t.auction_deed("store".into());
+    as_("town.testnet", T0 + 11);
+    t.nft_transfer(acc("cy.testnet"), "store".into(), None, None);
 }

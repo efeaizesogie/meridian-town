@@ -7,11 +7,13 @@
 
 use near_contract_standards::fungible_token::events::{FtBurn, FtMint};
 use near_contract_standards::fungible_token::FungibleToken;
+use near_contract_standards::non_fungible_token::NonFungibleToken;
 use near_sdk::json_types::U128;
 use near_sdk::store::{IterableMap, LookupMap, Vector};
 use near_sdk::{env, near, require, AccountId, BorshStorageKey, PanicOnDefault};
 
 mod days;
+mod deeds;
 mod events;
 mod ft;
 mod jobs;
@@ -22,6 +24,7 @@ pub mod pricing;
 #[cfg(test)]
 mod tests;
 
+use deeds::Auction;
 use params::{Item, Params};
 
 #[near(serializers = [borsh])]
@@ -33,6 +36,10 @@ enum Key {
     Jobs,
     PlayerWeeks,
     Weeks,
+    DeedOwners,
+    DeedMeta,
+    DeedEnum,
+    Auctions,
 }
 
 #[near(serializers = [borsh, json])]
@@ -48,7 +55,13 @@ pub struct Shop {
     pub open: bool,
     pub missed_upkeep: u32,
     /// Agent account allowed to run the shop's strategy (targets, delivery contracts).
+    /// Appointed by the deed holder; cleared whenever the deed changes hands.
     pub agent: Option<AccountId>,
+    /// Market day the shop closed, while it is closed.
+    pub closed_day: Option<u32>,
+    /// Cash at the start of the current market day, to measure the day's profit.
+    pub day_start_cash: U128,
+    pub dividends_paid: U128,
 }
 
 #[near(serializers = [borsh, json])]
@@ -115,6 +128,9 @@ pub struct Town {
     pub(crate) best_streak: u32,
     pub(crate) player_weeks: LookupMap<AccountId, PlayerWeek>,
     pub(crate) weeks: Vector<WeekResult>,
+
+    pub(crate) deeds: NonFungibleToken,
+    pub(crate) auctions: IterableMap<String, Auction>,
 }
 
 pub(crate) fn sub(name: &str) -> AccountId {
@@ -136,6 +152,9 @@ fn shop(id: &str, name: &str, buys: &[Item], sells: &[Item], targets: &[(Item, u
         open: true,
         missed_upkeep: 0,
         agent: None,
+        closed_day: None,
+        day_start_cash: U128(0),
+        dividends_paid: U128(0),
     }
 }
 
@@ -152,6 +171,8 @@ impl Town {
         require!(params.day_ms >= 60_000, "a day must be at least a minute");
         let now = env::block_timestamp();
         let mut town = Self {
+            deeds: NonFungibleToken::new(Key::DeedOwners, env::current_account_id(), Some(Key::DeedMeta), Some(Key::DeedEnum), Option::<Key>::None),
+            auctions: IterableMap::new(Key::Auctions),
             owner,
             minter,
             genesis_ns: now,
@@ -186,9 +207,11 @@ impl Town {
         town.mint_coin(&treasury, town.params.genesis_treasury.0, "genesis treasury");
         let outside = sub("outside");
         town.mint_coin(&outside, town.params.outside_start.0, "genesis outside traders");
-        for s in shops {
+        for mut s in shops {
             let acct = sub(&s.id);
             town.mint_coin(&acct, town.params.genesis_shop_cash.0, "genesis shop cash");
+            s.day_start_cash = town.params.genesis_shop_cash;
+            town.mint_deed(&s);
             for item in Item::ALL {
                 town.mint_items(&acct, item, s.target[item.idx()], "genesis stock");
             }
@@ -205,14 +228,6 @@ impl Town {
     pub fn set_minter(&mut self, minter: AccountId) {
         self.assert_owner();
         self.minter = minter;
-    }
-
-    /// Assign the agent account that runs a shop. Later this moves to the deed holder.
-    pub fn set_agent(&mut self, shop_id: String, agent: Option<AccountId>) {
-        self.assert_owner();
-        let mut s = self.shop(&shop_id);
-        s.agent = agent;
-        self.shops.insert(shop_id, s);
     }
 
     pub fn get_params(&self) -> Params {

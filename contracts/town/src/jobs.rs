@@ -96,8 +96,14 @@ impl Town {
 }
 
 impl Town {
+    /// The shop's agent, its deed holder, or the owner while the town holds the deed.
     fn assert_operator(&self, s: &Shop) {
         let caller = env::predecessor_account_id();
-        require!(s.agent.as_ref() == Some(&caller) || caller == self.owner, "only this shop's agent");
+        let holder = self.deed_owner(&s.id);
+        let town_held = holder == env::current_account_id();
+        require!(
+            s.agent.as_ref() == Some(&caller) || caller == holder || (town_held && caller == self.owner),
+            "only this shop's agent"
+        );
     }
 }

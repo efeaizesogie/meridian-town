@@ -13,6 +13,8 @@ use crate::{events, sub, PlayerWeek, Shop, Town, TownExt};
 pub struct ShopView {
     pub shop: Shop,
     pub account: AccountId,
+    pub deed_holder: AccountId,
+    pub auction: Option<crate::deeds::Auction>,
     pub cash: U128,
     pub stock: [u64; 5],
     /// Price of the next unit bought from / sold to this shop; "0" where it doesn't trade.
@@ -158,6 +160,8 @@ impl Town {
                 let mut view = ShopView {
                     shop: s.clone(),
                     account: acct.clone(),
+                    deed_holder: self.deed_owner(&s.id),
+                    auction: self.auctions.get(&s.id).cloned(),
                     cash: U128(cash),
                     stock: [0; 5],
                     ask: [U128(0); 5],

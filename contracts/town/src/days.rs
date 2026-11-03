@@ -1,11 +1,12 @@
 //! The town clock: end-of-day upkeep and production, and the weekly Festival (RULES.md §3, §7).
-//! Residents, the caravan, auctions and dividends land here next.
+//! Deed auctions settle and dividends are paid here too. Residents and the caravan come next.
 
 use near_sdk::json_types::U128;
 use near_sdk::serde_json::json;
 use near_sdk::{env, near, AccountId};
 
 use crate::params::Item;
+use crate::deeds::AuctionKind;
 use crate::{events, sub, PlayerWeek, Town, TownExt, WeekResult};
 
 /// At most this many days are processed per call, to stay inside the gas limit.
@@ -53,9 +54,12 @@ impl Town {
     }
 
     fn end_day(&mut self) {
+        let day = self.processed_days;
         self.produce("smith", &[Item::Wood, Item::Ore], Item::Tool, self.params.blacksmith_capacity);
         self.produce("baker", &[Item::Wheat], Item::Bread, self.params.baker_capacity);
-        self.collect_upkeep();
+        self.settle_auctions(day);
+        self.collect_upkeep(day);
+        self.pay_dividends();
     }
 
     fn produce(&mut self, shop_id: &str, inputs: &[Item], output: Item, capacity: u64) {
@@ -72,7 +76,7 @@ impl Town {
         self.mint_items(&acct, output, made, "produced");
     }
 
-    fn collect_upkeep(&mut self) {
+    fn collect_upkeep(&mut self, day: u32) {
         let treasury = env::current_account_id();
         let ids: Vec<String> = self.shops.keys().cloned().collect();
         for id in ids {
@@ -88,9 +92,38 @@ impl Town {
                 s.missed_upkeep += 1;
                 if s.missed_upkeep >= self.params.missed_upkeep_to_close {
                     s.open = false;
-                    events::town("shop_closed", json!({ "shop": id, "day": self.processed_days }));
+                    s.closed_day = Some(day);
+                    self.shops.insert(id.clone(), s);
+                    events::town("shop_closed", json!({ "shop": id, "day": day }));
+                    // The holder forfeits the deed; the town auctions it to reopen the shop.
+                    self.force_transfer_deed(&id, &treasury, "forfeited: shop closed");
+                    self.open_auction(&id, AuctionKind::Bankruptcy);
+                    continue;
                 }
             }
+            self.shops.insert(id, s);
+        }
+    }
+
+    /// RULES.md §3: on a profitable day with cash above comfort, the deed holder gets the
+    /// larger of half the day's profit or everything above the cash ceiling.
+    fn pay_dividends(&mut self) {
+        let ids: Vec<String> = self.shops.keys().cloned().collect();
+        for id in ids {
+            let mut s = self.shop(&id);
+            let acct = sub(&id);
+            let cash = self.coin_of(&acct);
+            if s.open && cash > s.day_start_cash.0 && cash > self.params.cash_comfort.0 {
+                let profit = cash - s.day_start_cash.0;
+                let div = (profit * self.params.dividend_share_bps as u128 / 10_000)
+                    .max(cash.saturating_sub(self.params.cash_ceiling.0))
+                    .min(cash);
+                let holder = self.deed_owner(&id);
+                self.move_coin(&acct, &holder, div, "dividend");
+                s.dividends_paid = U128(s.dividends_paid.0 + div);
+                events::town("dividend", json!({ "shop": id, "holder": holder, "amount": U128(div) }));
+            }
+            s.day_start_cash = U128(self.coin_of(&acct));
             self.shops.insert(id, s);
         }
     }

@@ -42,15 +42,27 @@ cash factor = clamp(shop cash / 600, 0.25, 1)
 
 ## 3. Shops, deeds and bankruptcy
 
-- Each shop is a NEAR sub-account (`shop-<name>.<town>`) and an NEP-171 deed. Whoever
-  holds the deed owns the account's cash flow.
-- **Upkeep:** 25 MERI per day to the treasury. Two missed days in a row → the shop closes.
-- **Auction:** a closed shop's deed is auctioned daily with a 300 MERI reserve. The
-  winning bid goes **into the shop's till**, which reopens it, and the deed moves to the
-  winner. If nobody bids for 3 days the treasury recapitalises it with 600 and keeps the deed.
-- **Dividends:** on a profitable day, with cash above 600, the shop pays the deed holder
-  the larger of half that day's profit or everything above 2,000. Town-owned shops pay the
-  treasury.
+- Each shop is an account (`<shop>.<town>`) holding its cash and stock, and an NEP-171
+  **deed** (token id = shop id). The town holds all six deeds at genesis.
+- **The deed holder controls the shop.** They appoint its agent (§8) and collect its
+  dividends. When a deed changes hands, by transfer or at auction, the old agent is
+  removed. Only the new holder can appoint one. The operator can't touch a player's shop.
+- **Upkeep:** 25 MERI per day to the treasury. Two missed days in a row → the shop closes,
+  **the holder forfeits the deed** to the town, and a bankruptcy auction opens.
+- **Auctions** run for one market day. Bids start at the 300 MERI reserve, and each new
+  bid must beat the last by 5%. Bids are held by `auction.<town>`; an outbid bidder is
+  refunded at once.
+  - *Bankruptcy auction:* the winning bid goes **into the shop's till**, which reopens it.
+    If nobody bids within 3 days, the treasury recapitalises the shop with 600 and keeps
+    the deed.
+  - *Town sale:* the operator can auction a deed the town holds while the shop keeps
+    trading. The winning bid goes to the treasury.
+- **Dividends:** at the end of each day, a shop that made a profit and holds more than 600
+  MERI pays its deed holder the larger of half that day's profit or everything above
+  2,000. Town-held deeds pay the treasury.
+- **Deeds are live.** `nft_token` returns the shop's current till, stock, status, agent
+  and lifetime dividends, plus a deed card image drawn from that data, so a wallet shows
+  the shop as it is now.
 
 ## 4. Gathering
 

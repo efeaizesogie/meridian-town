@@ -53,6 +53,10 @@ pub struct Params {
     pub upkeep: U128,
     pub missed_upkeep_to_close: u32,
     pub auction_reserve: U128,
+    /// Bids must beat the current high bid by this much.
+    pub auction_min_raise_bps: u32,
+    /// A bankrupt shop nobody bids for is recapitalised by the treasury (2 × reserve) after this many days.
+    pub auction_rescue_days: u32,
     pub dividend_share_bps: u32,
     pub cash_ceiling: U128,
 
@@ -107,6 +111,8 @@ impl Default for Params {
             upkeep: U128(25 * m),
             missed_upkeep_to_close: 2,
             auction_reserve: U128(300 * m),
+            auction_min_raise_bps: 500,
+            auction_rescue_days: 3,
             dividend_share_bps: 5_000,
             cash_ceiling: U128(2_000 * m),
             blacksmith_capacity: 60,
