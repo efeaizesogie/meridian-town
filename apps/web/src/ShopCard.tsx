@@ -1,4 +1,4 @@
-import { ICON, ITEMS, KEEPERS, fmt, meri, short, type Item, type Params, type Player, type Shop } from './types';
+import { ICON, ITEMS, KEEPERS, fmt, meri, short, type AgentReport, type Item, type Params, type Player, type Shop } from './types';
 
 /** The exact rule the contract used for this price, in words (RULES.md §2). */
 function explain(shop: Shop, item: Item, side: 'ask' | 'bid', p: Params): string {
@@ -30,8 +30,15 @@ function Move({ now, before }: { now: string; before?: string }) {
   return BigInt(now) > BigInt(before) ? <span className="up">▲</span> : <span className="down">▼</span>;
 }
 
-export function ShopCard({ shop, prev, params, player, busy, onSell, onBuy }: {
+function ago(ms: number) {
+  const m = Math.round((Date.now() - ms) / 60000);
+  return m < 1 ? 'just now' : `${m} min ago`;
+}
+
+export function ShopCard({ shop, agent, explorer, prev, params, player, busy, onSell, onBuy }: {
   shop: Shop;
+  agent?: AgentReport;
+  explorer: string;
   prev?: Shop;
   params: Params;
   player?: Player;
@@ -59,6 +66,24 @@ export function ShopCard({ shop, prev, params, player, busy, onSell, onBuy }: {
           Deed: {town ? 'the town' : short(shop.deed_holder)}
         </span>
       </div>
+      {agent && s.agent === agent.accountId && (
+        <div className="voice" title={`${agent.reasoning}
+
+Decided by ${agent.mode === 'llm' ? 'an LLM on NEAR AI Cloud' : 'its strategy rules'}; the contract checks every move.`}>
+          <p>“{agent.say.replace(/^[A-Z][a-z]+:\s*/, '')}”</p>
+          {agent.acted.length > 0 && (
+            <ul>
+              {agent.acted.map((a, i) => (
+                <li key={i} className={a.error ? 'bad' : ''}>
+                  {a.tx ? <a href={`${explorer}/txns/${a.tx}`} target="_blank" rel="noreferrer">{a.what}</a> : a.what}
+                  {a.error && ` (failed: ${a.error})`}
+                </li>
+              ))}
+            </ul>
+          )}
+          <span className="muted">{short(agent.accountId)}'s agent · {ago(agent.at)}{agent.mode === 'llm' ? ' · NEAR AI' : ''}</span>
+        </div>
+      )}
       <table className="prices">
         <tbody>
           {traded.map(item => {

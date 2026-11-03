@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, call, loadConfig, me, signOut, view, type Config } from './near';
-import { ITEMS, fmt, type Auction, type Item, type Job, type Params, type Player, type Shop, type TownView, type WeekResult } from './types';
+import { useCallback, useEffect, useState } from 'react';
+import { api, call, getJSON, loadConfig, me, signOut, view, type Config } from './near';
+import { ITEMS, fmt, type AgentReport, type Auction, type Item, type Job, type Params, type Player, type Shop, type TownView, type WeekResult } from './types';
+export type { Params };
 import { Join } from './Join';
 import { TopBar } from './TopBar';
 import { Grounds } from './Grounds';
@@ -15,6 +16,7 @@ export interface World {
   weeks: WeekResult[];
   params: Params;
   clock: { genesisMs: number; dayMs: number; skewMs: number };
+  agents: Record<string, AgentReport>;
   player?: Player;
   me?: { stamina: number; toolUses: number };
 }
@@ -34,7 +36,6 @@ export default function App() {
   const [prev, setPrev] = useState<World | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [log, setLog] = useState<LogLine[]>([]);
-  const params = useRef<Params | null>(null);
 
   useEffect(() => {
     loadConfig().then(c => {
@@ -43,27 +44,20 @@ export default function App() {
     });
   }, []);
 
-  const refresh = useCallback(async () => {
-    params.current ??= await view<Params>('get_params');
-    const [town, shops, jobs, auctions, weeks, clock] = await Promise.all([
-      view<TownView>('get_town'),
-      view<Shop[]>('get_shops'),
-      view<Job[]>('get_jobs'),
-      view<Auction[]>('get_auctions'),
-      view<WeekResult[]>('get_weeks', {}),
-      view<[number, number, number]>('get_clock'),
-    ]);
+  const refresh = useCallback(async (fresh = false) => {
+    const w = await getJSON<Omit<World, 'clock' | 'player' | 'me'> & { clock: [number, number, number]; readAt: number }>('/api/world');
     const acc = me();
     const [player, mine] = acc
-      ? await Promise.all([view<Player>('get_player', { account_id: acc }), api<{ stamina: number; toolUses: number }>('/api/me').catch(() => undefined)])
+      ? await Promise.all([
+          getJSON<Player>(`/api/player?account=${encodeURIComponent(acc)}${fresh ? '&fresh=1' : ''}`),
+          api<{ stamina: number; toolUses: number }>('/api/me').catch(() => undefined),
+        ])
       : [undefined, undefined];
-    setWorld(w => {
-      setPrev(w);
-      return {
-        town, shops, jobs, auctions, weeks, params: params.current!,
-        clock: { genesisMs: clock[0], dayMs: clock[1], skewMs: Date.now() - clock[2] },
-        player, me: mine,
-      };
+    // The snapshot's clock was read at w.readAt; use it to estimate chain time locally.
+    const skewMs = w.readAt - w.clock[2];
+    setWorld(prevWorld => {
+      setPrev(prevWorld);
+      return { ...w, clock: { genesisMs: w.clock[0], dayMs: w.clock[1], skewMs }, player, me: mine };
     });
   }, []);
 
@@ -82,7 +76,7 @@ export default function App() {
     try {
       const msg = await run();
       if (msg) say(msg, 'good');
-      await refresh();
+      await refresh(true);
     } catch (e) {
       say(`${label}: ${e instanceof Error ? e.message : e}`, 'bad');
     } finally {
@@ -105,21 +99,21 @@ export default function App() {
     sell: (shop: Shop, item: Item, qty: number) =>
       act('Sell', async () => {
         const cap = await view<number>('sell_capacity', { shop_id: shop.shop.id, item });
-        const n = Math.min(qty, cap);
+        const n = Math.min(qty, cap, 100); // ~0.2 Tgas per unit; 100 fits the gas below
         if (n < 1) throw new Error(`${shop.shop.name} won't take any more ${item}`);
         const quote = BigInt(await view<string>('quote_sell', { shop_id: shop.shop.id, item, quantity: n }));
-        const { value } = await call<string>('sell', { shop_id: shop.shop.id, item, quantity: n, min_total: String((quote * 97n) / 100n) });
+        const { value } = await call<string>('sell', { shop_id: shop.shop.id, item, quantity: n, min_total: String((quote * 97n) / 100n) }, 40);
         return `Sold ${n} ${item} to ${shop.shop.name} for ${fmt(value)} MERI`;
       }),
     buy: (shop: Shop, item: Item, qty: number) =>
       act('Buy', async () => {
         const quote = BigInt(await view<string>('quote_buy', { shop_id: shop.shop.id, item, quantity: qty }));
-        const { value } = await call<string>('buy', { shop_id: shop.shop.id, item, quantity: qty, max_total: String((quote * 103n) / 100n) });
+        const { value } = await call<string>('buy', { shop_id: shop.shop.id, item, quantity: qty, max_total: String((quote * 103n) / 100n) }, 40);
         return `Bought ${qty} ${item} from ${shop.shop.name} for ${fmt(value)} MERI`;
       }),
     use: (item: 'bread' | 'tool') =>
       act(item === 'bread' ? 'Eat' : 'Equip', async () => {
-        const { hash } = await call('use_item', { item, quantity: 1 }, 30);
+        const { hash } = await call('use_item', { item, quantity: 1 });
         const r = await api<{ stamina: number; toolUses: number }>('/api/use', { txHash: hash });
         return item === 'bread' ? `You eat. Stamina ${Math.round(r.stamina)}.` : `Tool in hand: ${r.toolUses} swings at double yield.`;
       }),
@@ -152,7 +146,7 @@ export default function App() {
           <h2 className="section-title">The market square</h2>
           <div className="shops">
             {world.shops.map(s => (
-              <ShopCard key={s.shop.id} shop={s} prev={prev?.shops.find(p => p.shop.id === s.shop.id)} params={world.params} player={world.player} busy={busy} onSell={actions.sell} onBuy={actions.buy} />
+              <ShopCard key={s.shop.id} shop={s} agent={world.agents?.[s.shop.id]} explorer={config.network === 'mainnet' ? 'https://nearblocks.io' : 'https://testnet.nearblocks.io'} prev={prev?.shops.find(p => p.shop.id === s.shop.id)} params={world.params} player={world.player} busy={busy} onSell={actions.sell} onBuy={actions.buy} />
             ))}
           </div>
         </section>

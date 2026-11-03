@@ -6,14 +6,47 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PublicKey } from 'near-api-js';
-import { GAME, NETWORK, RPC, TOWN, accountExists, advanceTown, createPlayer, gatherBatch, hasKey, verifyUseItem, view, type GatherOrder } from './chain.ts';
+import { GAME, NETWORK, RPCS, TOWN, accountExists, advanceTown, createPlayer, gatherBatch, hasKey, verifyUseItem, view, type GatherOrder } from './chain.ts';
 import * as players from './players.ts';
+import { PERSONAS, agentAccount, getReports, startAgents } from './agents.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const WEB_DIST = fileURLToPath(new URL('../../web/dist/', import.meta.url));
 
 let dayMs = 900_000;
-view<{ day_ms: number }>('get_params').then(p => (dayMs = p.day_ms)).catch(e => console.error('get_params failed', e));
+
+// ---------- one shared read of the town, so player count doesn't multiply RPC load ----------
+
+let params: any = null;
+let world: any = null;
+const playerCache = new Map<string, { at: number; data: unknown }>();
+
+let lastSlowRead = 0;
+async function readWorld() {
+  params ??= await view<any>('get_params');
+  dayMs = params.day_ms;
+  // Live state every poll; the clock once; Festival history every 30 seconds.
+  const slow = Date.now() - lastSlowRead > 30_000;
+  const [town, shops, jobs, auctions, weeks, clock] = await Promise.all([
+    view('get_town'), view('get_shops'), view('get_jobs'), view('get_auctions'),
+    slow || !world ? view('get_weeks', {}) : world.weeks,
+    world?.clock ?? view<[number, number, number]>('get_clock'),
+  ]);
+  if (slow) lastSlowRead = Date.now();
+  // readAt: when the clock was read, so clients can turn its chain time into a local offset.
+  world = { town, shops, jobs, auctions, weeks, params, clock, readAt: world?.readAt ?? Date.now() };
+}
+const pollWorld = () => readWorld().catch(e => console.error('read world', e instanceof Error ? e.message : e));
+pollWorld();
+setInterval(pollWorld, 5000).unref();
+
+async function playerView(accountId: string) {
+  const hit = playerCache.get(accountId);
+  if (hit && Date.now() - hit.at < 2500) return hit.data;
+  const data = await view('get_player', { account_id: accountId });
+  playerCache.set(accountId, { at: Date.now(), data });
+  return data;
+}
 
 // ---------- auth: requests are signed by the player's own key ----------
 
@@ -75,7 +108,23 @@ const joinsByIp = new Map<string, number[]>();
 async function route(req: IncomingMessage, url: URL, body: string): Promise<unknown> {
   const R = players.RULES;
   if (req.method === 'GET' && url.pathname === '/api/config') {
-    return { network: NETWORK, rpc: RPC, town: TOWN, game: GAME, dayMs, rules: R };
+    return { network: NETWORK, rpcs: RPCS, town: TOWN, game: GAME, dayMs, rules: R };
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/world') {
+    if (!world) throw new HttpError(503, 'reading the town, try again in a moment');
+    return { ...world, agents: getReports() };
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/player') {
+    const accountId = url.searchParams.get('account') ?? '';
+    if (!/^[a-z0-9._-]{2,64}$/.test(accountId)) throw new HttpError(400, 'bad account');
+    if (url.searchParams.get('fresh')) playerCache.delete(accountId);
+    return playerView(accountId);
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/agents') {
+    return { agents: Object.fromEntries(Object.keys(PERSONAS).map(id => [id, agentAccount(id)])), reports: getReports() };
   }
 
   if (req.method === 'POST' && url.pathname === '/api/join') {
@@ -147,7 +196,7 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
 
 setInterval(async () => {
   try {
-    const t = await view<{ day: number; processed_days: number }>('get_town');
+    const t = world?.town ?? (await view<{ day: number; processed_days: number }>('get_town'));
     if (t.day > t.processed_days) {
       await advanceTown();
       console.log(`advanced town to day ${t.day}`);
@@ -184,4 +233,7 @@ createServer(async (req, res) => {
     if (status === 500) console.error(e);
     res.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }));
   }
-}).listen(PORT, () => console.log(`Meridian game server on http://localhost:${PORT} — town ${TOWN}, game account ${GAME}`));
+}).listen(PORT, () => {
+  startAgents(() => world);
+  console.log(`Meridian game server on http://localhost:${PORT} — town ${TOWN}, game account ${GAME}`);
+});

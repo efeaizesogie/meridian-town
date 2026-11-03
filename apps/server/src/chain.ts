@@ -2,10 +2,14 @@
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { Account, JsonRpcProvider, PublicKey, actions, nearToYocto, teraToGas } from 'near-api-js';
+import { Account, FailoverRpcProvider, JsonRpcProvider, PublicKey, actions, nearToYocto, teraToGas } from 'near-api-js';
 
 export const NETWORK = process.env.NEAR_NETWORK ?? 'testnet';
-export const RPC = process.env.NEAR_RPC ?? (NETWORK === 'mainnet' ? 'https://rpc.mainnet.fastnear.com' : 'https://test.rpc.fastnear.com');
+/** RPC endpoints, tried in turn. Free public RPCs rate-limit, so one is never enough. */
+export const RPCS = (process.env.NEAR_RPCS ?? (NETWORK === 'mainnet'
+  ? 'https://rpc.mainnet.fastnear.com,https://archival-rpc.mainnet.fastnear.com,https://rpc.mainnet.near.org'
+  : 'https://near-testnet.drpc.org,https://testnet-rpc.intea.rs,https://test.rpc.fastnear.com,https://archival-rpc.testnet.fastnear.com,https://archival-rpc.testnet.near.org')).split(',');
+export const RPC = RPCS[0];
 export const TOWN = process.env.TOWN_CONTRACT ?? 'town.efecode.testnet';
 export const GAME = process.env.GAME_ACCOUNT ?? 'game.efecode.testnet';
 
@@ -13,7 +17,7 @@ export const GAME = process.env.GAME_ACCOUNT ?? 'game.efecode.testnet';
 const PLAYER_GAS_MONEY = nearToYocto('0.1');
 const PLAYER_KEY_ALLOWANCE = nearToYocto('1');
 
-export const provider = new JsonRpcProvider({ url: RPC });
+export const provider = new FailoverRpcProvider(RPCS.map(url => new JsonRpcProvider({ url })));
 
 function loadGameKey(): string {
   if (process.env.GAME_PRIVATE_KEY) return process.env.GAME_PRIVATE_KEY;
@@ -24,27 +28,49 @@ function loadGameKey(): string {
 
 export const game = new Account(GAME, provider, loadGameKey() as any);
 
+let rpcIndex = 0;
+const benchedUntil = new Map<string, number>(); // endpoint -> ms timestamp it may be used again
+
+/** A JSON-RPC call that skips endpoints which recently rate-limited us. */
+export async function rpc(method: string, params: unknown): Promise<any> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < RPCS.length * 2; attempt++) {
+    const url = RPCS[rpcIndex % RPCS.length];
+    if ((benchedUntil.get(url) ?? 0) > Date.now() && attempt < RPCS.length) {
+      rpcIndex++;
+      continue;
+    }
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      const body = await res.json();
+      if (res.status === 429 || res.status >= 500 || body.error?.code === -429) throw new Error(`${url} ${res.status}`);
+      return body;
+    } catch (e) {
+      lastError = e;
+      benchedUntil.set(url, Date.now() + 30_000);
+      rpcIndex++;
+    }
+  }
+  throw lastError;
+}
+
 export async function view<T>(method: string, args: object = {}): Promise<T> {
-  const res = await fetch(RPC, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0', id: 1, method: 'query',
-      params: { request_type: 'call_function', finality: 'optimistic', account_id: TOWN, method_name: method, args_base64: Buffer.from(JSON.stringify(args)).toString('base64') },
-    }),
-  });
-  const body = await res.json();
+  const body = await rpc('query', { request_type: 'call_function', finality: 'optimistic', account_id: TOWN, method_name: method, args_base64: Buffer.from(JSON.stringify(args)).toString('base64') });
   if (body.error || body.result?.error) throw new Error(JSON.stringify(body.error ?? body.result.error));
   return JSON.parse(Buffer.from(body.result.result).toString());
 }
 
 export async function accountExists(accountId: string): Promise<boolean> {
-  try {
-    await provider.viewAccount({ accountId });
-    return true;
-  } catch {
-    return false;
-  }
+  const body = await rpc('query', { request_type: 'view_account', finality: 'final', account_id: accountId });
+  if (body.result) return true;
+  const cause = body.error?.cause?.name;
+  if (cause === 'UNKNOWN_ACCOUNT') return false;
+  throw new Error(`could not check ${accountId}: ${JSON.stringify(body.error)}`);
 }
 
 /** Create `<name>.<game>` whose only key can call the town contract and nothing else. */
@@ -60,12 +86,8 @@ export async function createPlayer(accountId: string, publicKey: string) {
 }
 
 export async function hasKey(accountId: string, publicKey: string): Promise<boolean> {
-  try {
-    await provider.viewAccessKey({ accountId, publicKey });
-    return true;
-  } catch {
-    return false;
-  }
+  const body = await rpc('query', { request_type: 'view_access_key', finality: 'final', account_id: accountId, public_key: publicKey });
+  return !!body.result && !body.result.error;
 }
 
 export interface GatherOrder {

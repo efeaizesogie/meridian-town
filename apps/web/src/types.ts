@@ -91,3 +91,13 @@ export const meri = (micro: string | number | bigint) => Number(micro) / 1e6;
 export const fmt = (micro: string | number | bigint, digits = 2) =>
   meri(micro).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 export const short = (account: string) => account.split('.')[0];
+
+export interface AgentReport {
+  shopId: string;
+  accountId: string;
+  mode: 'llm' | 'rules';
+  say: string;
+  reasoning: string;
+  acted: { what: string; tx?: string; error?: string }[];
+  at: number;
+}

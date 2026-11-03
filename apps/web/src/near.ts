@@ -1,10 +1,10 @@
 // The player's side of NEAR: a key kept in this browser, view calls over RPC, and
 // transactions the player signs themselves. The key can only call the town contract.
-import { Account, JsonRpcProvider, KeyPair, teraToGas } from 'near-api-js';
+import { Account, FailoverRpcProvider, JsonRpcProvider, KeyPair, teraToGas } from 'near-api-js';
 
 export interface Config {
   network: string;
-  rpc: string;
+  rpcs: string[];
   town: string;
   game: string;
   dayMs: number;
@@ -18,13 +18,14 @@ interface Session {
 
 const SESSION = 'meridian.session';
 let config: Config;
-let provider: JsonRpcProvider;
+let provider: FailoverRpcProvider;
+let rpcIndex = 0;
 let session: Session | null = null;
 let account: Account | null = null;
 
 export async function loadConfig(): Promise<Config> {
   config = await (await fetch('/api/config')).json();
-  provider = new JsonRpcProvider({ url: config.rpc });
+  provider = new FailoverRpcProvider(config.rpcs.map(url => new JsonRpcProvider({ url })));
   try {
     const saved = localStorage.getItem(SESSION);
     if (saved) setSession(JSON.parse(saved));
@@ -81,22 +82,45 @@ export async function api<T>(path: string, body: object = {}): Promise<T> {
   return out;
 }
 
+/** A view call on the town, moving to the next RPC when one is rate-limited. */
 export async function view<T>(method: string, args: object = {}): Promise<T> {
-  const res = await fetch(config.rpc, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0', id: 'm', method: 'query',
-      params: { request_type: 'call_function', finality: 'optimistic', account_id: config.town, method_name: method, args_base64: b64(new TextEncoder().encode(JSON.stringify(args))) },
-    }),
-  });
-  const body = await res.json();
-  if (body.error || body.result?.error) throw new Error(JSON.stringify(body.error ?? body.result.error));
-  return JSON.parse(new TextDecoder().decode(new Uint8Array(body.result.result)));
+  let last: unknown;
+  for (let attempt = 0; attempt < config.rpcs.length * 2; attempt++) {
+    const url = config.rpcs[rpcIndex % config.rpcs.length];
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 'm', method: 'query',
+          params: { request_type: 'call_function', finality: 'optimistic', account_id: config.town, method_name: method, args_base64: b64(new TextEncoder().encode(JSON.stringify(args))) },
+        }),
+      });
+      const body = await res.json();
+      if (res.status === 429 || res.status >= 500 || body.error?.code === -429) throw new Error(`rpc busy (${res.status})`);
+      if (body.error || body.result?.error) throw new Error(JSON.stringify(body.error ?? body.result.error));
+      return JSON.parse(new TextDecoder().decode(new Uint8Array(body.result.result)));
+    } catch (e) {
+      last = e;
+      if (e instanceof Error && !e.message.startsWith('rpc busy') && !(e instanceof TypeError)) throw e;
+      rpcIndex++;
+    }
+  }
+  throw last;
+}
+
+/** Shared town snapshot and this player's balances, read by the game server. */
+export async function getJSON<T>(path: string): Promise<T> {
+  const res = await fetch(path);
+  const out = await res.json();
+  if (!res.ok) throw new Error(out.error);
+  return out;
 }
 
 /** Send a transaction to the town as the player. Returns the call's result and tx hash. */
-export async function call<T = unknown>(methodName: string, args: object, tgas = 50): Promise<{ value: T; hash: string }> {
+// A transaction needs its full prepaid gas available up front at the worst-case gas price
+// (~0.001 NEAR per Tgas); unused gas is refunded. Players start with 0.1 NEAR, so keep this low.
+export async function call<T = unknown>(methodName: string, args: object, tgas = 30): Promise<{ value: T; hash: string }> {
   if (!account) throw new Error('not signed in');
   try {
     const res: any = await account.callFunctionRaw({ contractId: config.town, methodName, args, gas: teraToGas(tgas) });

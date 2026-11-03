@@ -8,8 +8,8 @@ Built for NEAR HACKATHON (Nov 2026). Tracks: Games, NFTs, Memecoins, Social Mone
 
 > Status: the game design, economy rules, simulator and core contract are done and
 > deployed to testnet (coin, goods, shops, trading, gathering, delivery contracts,
-> Festival, deeds) and the game is playable in the browser. Next: merchant agents,
-> residents, the caravan, guilds and fast-forward mode.
+> Festival, deeds), the game is playable in the browser, and six merchant agents run the
+> shops on chain. Next: residents, the caravan, guilds and fast-forward mode.
 
 ## Try it
 
@@ -35,6 +35,19 @@ Pick a name and you're in: the server creates `<name>.game.efecode.testnet` with
 lives in your browser and can only call the town contract. Gather at the Forest, the Mine
 or the Fields, sell to whichever shop pays best (hover a price to see the rule behind it),
 buy bread when you're tired, take delivery contracts, and bid for deeds.
+
+**Merchant agents.** Each shop is run by an agent with its own account
+(`hilde.game.efecode.testnet` and so on) whose only key can call `set_target`, `post_job` and
+`expire_job` on the town. Every minute each agent reads its shop, decides, acts on chain and
+says why on the shop card, with links to its transactions. Decisions come from a fixed
+strategy; set `NEARAI_API_KEY` (NEAR AI Cloud, model `AGENT_LLM_MODEL`, default
+`zai-org/GLM-5.1-FP8`) and an LLM decides in character instead, inside the same limits,
+which the server checks and the contract enforces. Appoint them once with
+`node scripts/appoint-agents.ts` (signed by the town owner).
+
+Free public RPCs rate-limit hard. The server reads the town once every 5 seconds for all
+players, rotates across several endpoints, and benches any that return 429. For a busy demo,
+put a keyed endpoint first in `NEAR_RPCS`.
 
 The server needs the game account's key: by default it reads
 `~/.near-credentials/testnet/game.efecode.testnet.json`, or set `GAME_PRIVATE_KEY`.

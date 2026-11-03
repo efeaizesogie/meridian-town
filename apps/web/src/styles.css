@@ -183,6 +183,12 @@ input.small { padding: 4px 8px; width: 90px; font-family: var(--mono); }
 .up { color: var(--green); font-size: 10px; }
 .down { color: var(--red); font-size: 10px; }
 
+/* merchant voice */
+.voice { background: var(--paper-2); border: 1px solid var(--line); border-left: 3px solid var(--wood-2); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+.voice p { margin: 0 0 4px; font-family: var(--serif); font-style: italic; color: var(--ink); }
+.voice ul { margin: 0 0 4px; padding-left: 16px; font-size: 12px; }
+.voice a { color: var(--wood); }
+
 /* ---------- right column ---------- */
 .job, .auction { border-top: 1px dashed var(--line); padding: 10px 0; display: flex; flex-direction: column; gap: 6px; }
 .job { flex-direction: row; justify-content: space-between; align-items: center; }
