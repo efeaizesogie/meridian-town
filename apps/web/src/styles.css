@@ -214,6 +214,24 @@ input.small { padding: 4px 8px; width: 90px; font-family: var(--mono); }
 .log time { font-family: var(--mono); color: var(--muted); font-size: 11px; margin-right: 4px; }
 .pending { color: var(--amber); font-size: 13px; margin: 4px 0; }
 
+/* ---------- caravan ---------- */
+.caravan-goods { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.good { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--paper-2); display: flex; flex-direction: column; gap: 3px; }
+.good-head { display: flex; justify-content: space-between; align-items: baseline; }
+.sealed { font-size: 12px; margin-top: 4px; font-family: var(--mono); }
+.sealed .lead { color: var(--green); font-weight: 600; }
+.last-round { border-top: 1px dashed var(--line); margin-top: 10px; padding-top: 8px; }
+.last-round h4, .guild-body h4 { margin: 0 0 4px; font-size: 13px; }
+
+/* ---------- guilds ---------- */
+.guild { border-top: 1px dashed var(--line); padding: 8px 0; }
+.guild-head { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 0; background: none; padding: 4px 0; text-align: left; }
+.guild-body { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+.guild-body .row { flex-wrap: wrap; }
+.guild select { font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper-2); color: var(--ink); max-width: 160px; }
+.proposals { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.proposals li { display: flex; justify-content: space-between; gap: 8px; align-items: center; font-size: 13px; border-top: 1px dashed var(--line); padding-top: 6px; }
+
 /* ---------- fast-forward ---------- */
 .square-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
 .ff-backdrop { position: fixed; inset: 0; background: rgba(20, 14, 8, 0.55); z-index: 20; display: grid; place-items: start center; overflow: auto; padding: 24px 16px; }

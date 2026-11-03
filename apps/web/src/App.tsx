@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, call, getJSON, loadConfig, me, signOut, view, type Config } from './near';
-import { ITEMS, fmt, type AgentReport, type Auction, type Item, type Job, type Params, type Player, type Shop, type TownView, type WeekResult } from './types';
+import { ITEMS, fmt, type AgentReport, type Auction, type CaravanView, type GuildView, type SupplierInfo, type Item, type Job, type Params, type Player, type Shop, type TownView, type WeekResult } from './types';
 export type { Params };
 import { Join } from './Join';
 import { TopBar } from './TopBar';
@@ -8,6 +8,8 @@ import { Grounds } from './Grounds';
 import { ShopCard } from './ShopCard';
 import { Inventory, NoticeBoard, Deeds, TownLog } from './Panels';
 import { FastForward } from './FastForward';
+import { Caravan } from './Caravan';
+import { GuildHall } from './Guilds';
 
 export interface World {
   town: TownView;
@@ -18,6 +20,9 @@ export interface World {
   params: Params;
   clock: { genesisMs: number; dayMs: number; skewMs: number };
   agents: Record<string, AgentReport>;
+  caravan: CaravanView | null;
+  suppliers: Record<string, SupplierInfo>;
+  guildViews: GuildView[];
   player?: Player;
   me?: { stamina: number; toolUses: number };
 }
@@ -154,10 +159,12 @@ export default function App() {
               <ShopCard key={s.shop.id} shop={s} agent={world.agents?.[s.shop.id]} explorer={config.network === 'mainnet' ? 'https://nearblocks.io' : 'https://testnet.nearblocks.io'} prev={prev?.shops.find(p => p.shop.id === s.shop.id)} params={world.params} player={world.player} busy={busy} onSell={actions.sell} onBuy={actions.buy} />
             ))}
           </div>
+          <Caravan world={world} />
         </section>
         <section className="col right">
           <NoticeBoard world={world} busy={busy} onDeliver={actions.deliver} />
           <Deeds world={world} account={account} busy={busy} onBid={actions.bid} />
+          <GuildHall world={world} account={account} busy={busy} act={act} town={config.town} />
           <TownLog log={log} busy={busy} />
         </section>
       </main>

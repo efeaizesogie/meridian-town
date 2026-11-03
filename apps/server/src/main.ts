@@ -9,6 +9,8 @@ import { PublicKey } from 'near-api-js';
 import { GAME, NETWORK, RPCS, TOWN, accountExists, advanceTown, createPlayer, gatherBatch, hasKey, verifyUseItem, view, type GatherOrder } from './chain.ts';
 import * as players from './players.ts';
 import { PERSONAS, agentAccount, getReports, startAgents } from './agents.ts';
+import { getSupplierBids, startSuppliers } from './suppliers.ts';
+import { readGuilds, runRegistrar, type GuildView } from './guilds.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const WEB_DIST = fileURLToPath(new URL('../../web/dist/', import.meta.url));
@@ -22,19 +24,28 @@ let world: any = null;
 const playerCache = new Map<string, { at: number; data: unknown }>();
 
 let lastSlowRead = 0;
+let guildViews: GuildView[] = [];
+async function pollGuilds() {
+  const ids: string[] = world?.guilds ?? [];
+  if (!ids.length) return;
+  guildViews = await readGuilds(ids);
+  await runRegistrar(guildViews);
+}
+setInterval(() => pollGuilds().catch(e => console.error('guilds', e instanceof Error ? e.message : e)), 15_000).unref();
 async function readWorld() {
   params ??= await view<any>('get_params');
   dayMs = params.day_ms;
   // Live state every poll; the clock once; Festival history every 30 seconds.
   const slow = Date.now() - lastSlowRead > 30_000;
-  const [town, shops, jobs, auctions, weeks, clock] = await Promise.all([
-    view('get_town'), view('get_shops'), view('get_jobs'), view('get_auctions'),
+  const [town, shops, jobs, auctions, caravan, guilds, weeks, clock] = await Promise.all([
+    view('get_town'), view('get_shops'), view('get_jobs'), view('get_auctions'), view('get_caravan'),
+    slow || !world ? view('get_guilds') : world.guilds,
     slow || !world ? view('get_weeks', {}) : world.weeks,
     world?.clock ?? view<[number, number, number]>('get_clock'),
   ]);
   if (slow) lastSlowRead = Date.now();
   // readAt: when the clock was read, so clients can turn its chain time into a local offset.
-  world = { town, shops, jobs, auctions, weeks, params, clock, readAt: world?.readAt ?? Date.now() };
+  world = { town, shops, jobs, auctions, caravan, guilds, weeks, params, clock, readAt: world?.readAt ?? Date.now() };
 }
 const pollWorld = () => readWorld().catch(e => console.error('read world', e instanceof Error ? e.message : e));
 pollWorld();
@@ -108,12 +119,12 @@ const joinsByIp = new Map<string, number[]>();
 async function route(req: IncomingMessage, url: URL, body: string): Promise<unknown> {
   const R = players.RULES;
   if (req.method === 'GET' && url.pathname === '/api/config') {
-    return { network: NETWORK, rpcs: RPCS, town: TOWN, game: GAME, dayMs, rules: R };
+    return { network: NETWORK, rpcs: RPCS, town: TOWN, game: GAME, dayMs, rules: R, guilds: world?.guilds ?? [] };
   }
 
   if (req.method === 'GET' && url.pathname === '/api/world') {
     if (!world) throw new HttpError(503, 'reading the town, try again in a moment');
-    return { ...world, agents: getReports() };
+    return { ...world, agents: getReports(), suppliers: getSupplierBids(), guildViews };
   }
 
   if (req.method === 'GET' && url.pathname === '/api/player') {
@@ -128,7 +139,7 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
   }
 
   if (req.method === 'POST' && url.pathname === '/api/join') {
-    const { name, publicKey } = JSON.parse(body || '{}');
+    const { name, publicKey, guildKeys = {} } = JSON.parse(body || '{}');
     if (typeof name !== 'string' || !/^[a-z0-9][a-z0-9-]{1,18}[a-z0-9]$/.test(name)) {
       throw new HttpError(400, 'names are 3–20 characters: lowercase letters, digits and dashes');
     }
@@ -138,7 +149,11 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
     if (recent.length >= 5) throw new HttpError(429, 'too many new players from here; try later');
     const accountId = `${name}.${GAME}`;
     if (await accountExists(accountId)) throw new HttpError(409, 'that name is taken');
-    await createPlayer(accountId, publicKey);
+    // One extra key per chartered guild, limited to proposing and voting in that DAO.
+    const guildIds: string[] = world?.guilds ?? [];
+    const extra = guildIds.filter(g => guildKeys[g]).map(g => ({ receiver: g, publicKey: String(guildKeys[g]), methods: ['add_proposal', 'act_proposal'] }));
+    extra.forEach(k => PublicKey.fromString(k.publicKey));
+    await createPlayer(accountId, publicKey, extra);
     joinsByIp.set(ip, [...recent, Date.now()]);
     players.add(accountId, name);
     knownKeys.set(accountId, publicKey);
@@ -235,5 +250,6 @@ createServer(async (req, res) => {
   }
 }).listen(PORT, () => {
   startAgents(() => world);
+  startSuppliers(() => world?.caravan ?? null);
   console.log(`Meridian game server on http://localhost:${PORT} — town ${TOWN}, game account ${GAME}`);
 });

@@ -73,14 +73,15 @@ export async function accountExists(accountId: string): Promise<boolean> {
   throw new Error(`could not check ${accountId}: ${JSON.stringify(body.error)}`);
 }
 
-/** Create `<name>.<game>` whose only key can call the town contract and nothing else. */
-export async function createPlayer(accountId: string, publicKey: string) {
+/** Create `<name>.<game>`: one key that can call only the town, plus one per guild limited to proposing and voting. */
+export async function createPlayer(accountId: string, publicKey: string, extraKeys: { receiver: string; publicKey: string; methods: string[] }[] = []) {
   await game.signAndSendTransaction({
     receiverId: accountId,
     actions: [
       actions.createAccount(),
       actions.transfer(PLAYER_GAS_MONEY),
       actions.addFunctionCallAccessKey(PublicKey.fromString(publicKey), TOWN, [], PLAYER_KEY_ALLOWANCE),
+      ...extraKeys.map(k => actions.addFunctionCallAccessKey(PublicKey.fromString(k.publicKey), k.receiver, k.methods, PLAYER_KEY_ALLOWANCE)),
     ],
   });
 }

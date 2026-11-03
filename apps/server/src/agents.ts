@@ -5,9 +5,9 @@
 // Decisions come from a fixed strategy (always available) and, when NEARAI_API_KEY is set,
 // from an LLM on NEAR AI Cloud that sees the same state and the same limits. Whatever the
 // LLM proposes is checked against those limits here, and again by the contract.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { Account, KeyPair, PublicKey, actions, nearToYocto, teraToGas } from 'near-api-js';
-import { GAME, TOWN, accountExists, game, hasKey, provider, view } from './chain.ts';
+import { teraToGas } from 'near-api-js';
+import { TOWN } from './chain.ts';
+import { KeyStore, withRetries } from './accounts.ts';
 
 const ITEMS = ['wood', 'ore', 'wheat', 'bread', 'tool'] as const;
 type Item = (typeof ITEMS)[number];
@@ -37,54 +37,15 @@ export const PERSONAS: Record<string, { keeper: string; voice: string; lines: { 
     lines: { short: 'Shelves are bare and people are talking.', glut: 'I can’t give these away!', steady: 'Everyone’s buying, and I hear everything.' } },
 };
 
-// ---------- keys: generated once, kept in apps/server/data (gitignored) ----------
+// ---------- accounts: one per shop, key limited to AGENT_METHODS ----------
 
-const DIR = new URL('../data/', import.meta.url);
-const KEYS = new URL('agents.json', DIR);
-let keys: Record<string, { accountId: string; secretKey: string; pending?: boolean }> = existsSync(KEYS) ? JSON.parse(readFileSync(KEYS, 'utf8')) : {};
-const saveKeys = () => {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(KEYS, JSON.stringify(keys, null, 1));
-};
+const store = new KeyStore('agents.json');
 
 /** The agent account for a shop: `<keeper>.<game>`, or the name it was created under. */
-export const agentAccount = (shopId: string) => keys[shopId]?.accountId ?? `${PERSONAS[shopId].keeper}.${GAME}`;
+export const agentAccount = (shopId: string) => store.accountId(shopId, PERSONAS[shopId].keeper);
 
-/**
- * Create any missing agent accounts: 0.05 NEAR for gas, one key limited to the agent
- * methods. The key is saved before the transaction is sent, so a dropped response can't
- * leave an account we hold no key for.
- */
 export async function ensureAgentAccounts() {
-  for (const shopId of Object.keys(PERSONAS)) {
-    const saved = keys[shopId];
-    if (saved && !saved.pending) continue;
-    if (saved?.pending) {
-      const pk = KeyPair.fromString(saved.secretKey as any).getPublicKey().toString();
-      if (await hasKey(saved.accountId, pk)) {
-        delete saved.pending;
-        saveKeys();
-        continue;
-      }
-    }
-    let accountId = `${PERSONAS[shopId].keeper}.${GAME}`;
-    for (let n = 2; !saved?.pending && (await accountExists(accountId)); n++) accountId = `${PERSONAS[shopId].keeper}${n}.${GAME}`;
-    if (saved?.pending) accountId = saved.accountId;
-    const key = saved?.pending ? KeyPair.fromString(saved.secretKey as any) : KeyPair.fromRandom('ed25519');
-    keys[shopId] = { accountId, secretKey: key.toString(), pending: true };
-    saveKeys();
-    await game.signAndSendTransaction({
-      receiverId: accountId,
-      actions: [
-        actions.createAccount(),
-        actions.transfer(nearToYocto('0.15')),
-        actions.addFunctionCallAccessKey(PublicKey.fromString(key.getPublicKey().toString()), TOWN, AGENT_METHODS, nearToYocto('0.5')),
-      ],
-    });
-    delete keys[shopId].pending;
-    saveKeys();
-    console.log(`created agent ${accountId}`);
-  }
+  for (const shopId of Object.keys(PERSONAS)) await store.ensure(shopId, PERSONAS[shopId].keeper, AGENT_METHODS);
 }
 
 // ---------- what an agent sees and may do ----------
@@ -279,11 +240,6 @@ function validate(s: ShopView, jobs: Job[], params: any, proposed: Action[]): Ac
 
 // ---------- the loop ----------
 
-const signers: Record<string, Account> = {};
-function signer(shopId: string) {
-  return (signers[shopId] ??= new Account(keys[shopId].accountId, provider, keys[shopId].secretKey as any));
-}
-
 const describe = (a: Action) =>
   a.type === 'set_target' ? `set ${a.item} target to ${a.target}`
   : a.type === 'post_job' ? `posted a contract for ${a.quantity} ${a.item} at ${m(a.unit_price)}`
@@ -297,7 +253,7 @@ async function tick() {
   const { shops, jobs, params, town } = w;
   await Promise.all(shops.map(async s => {
     const shopId = s.shop.id;
-    if (!keys[shopId] || keys[shopId].pending || s.shop.agent !== keys[shopId].accountId || !s.shop.open) return;
+    if (!store.ready(shopId) || s.shop.agent !== agentAccount(shopId) || !s.shop.open) return;
     const rules = decideByRules(s, jobs, params);
     const last = reports[shopId];
     const wantsToSpeak = !last || Date.now() - last.at > SPEAK_EVERY_MS;
@@ -310,13 +266,13 @@ async function tick() {
         : a.type === 'post_job' ? { shop_id: shopId, item: a.item, quantity: a.quantity, unit_price: a.unit_price, hours: a.hours }
         : { job_id: a.job_id };
       try {
-        const res: any = await signer(shopId).callFunctionRaw({ contractId: TOWN, methodName: a.type, args, gas: teraToGas(30) });
+        const res: any = await store.signer(shopId).callFunctionRaw({ contractId: TOWN, methodName: a.type, args, gas: teraToGas(30) });
         acted.push({ what: describe(a), tx: res.transaction.hash });
       } catch (e) {
         acted.push({ what: describe(a), error: (e instanceof Error ? e.message : String(e)).slice(0, 160) });
       }
     }
-    reports[shopId] = { shopId, accountId: keys[shopId].accountId, mode: llm ? 'llm' : 'rules', say: d.say, reasoning: d.reasoning, acted, at: Date.now() };
+    reports[shopId] = { shopId, accountId: agentAccount(shopId), mode: llm ? 'llm' : 'rules', say: d.say, reasoning: d.reasoning, acted, at: Date.now() };
     if (acted.length) console.log(`[agent ${shopId}] ${acted.map(a => a.what + (a.error ? ` FAILED: ${a.error}` : '')).join('; ')}`);
   }));
 }
@@ -324,16 +280,8 @@ async function tick() {
 export async function startAgents(world: typeof readWorld) {
   readWorld = world;
   if (process.env.AGENTS === 'off') return;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    try {
-      await ensureAgentAccounts();
-      break;
-    } catch (e) {
-      console.error('agent accounts (will retry):', e instanceof Error ? e.message : e);
-      await new Promise(r => setTimeout(r, 10_000));
-    }
-  }
-  console.log(`merchant agents: ${Object.keys(keys).length} keys, decisions by ${LLM_KEY ? `${LLM_MODEL} (with rule checks)` : 'strategy rules (set NEARAI_API_KEY for LLM agents)'}`);
+  await withRetries('agent accounts', ensureAgentAccounts);
+  console.log(`merchant agents: ${Object.keys(PERSONAS).filter(id => store.ready(id)).length} ready, decisions by ${LLM_KEY ? `${LLM_MODEL} (with rule checks)` : 'strategy rules (set NEARAI_API_KEY for LLM agents)'}`);
   const loop = () => tick().catch(e => console.error('agent tick', e instanceof Error ? e.message : e));
   setTimeout(loop, 5_000);
   setInterval(loop, TICK_MS).unref();

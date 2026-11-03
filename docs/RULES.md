@@ -3,9 +3,9 @@
 The rules every participant plays by: players, merchant agents, supplier agents and the
 town itself. Numbers come from [`packages/economy/src/params.ts`](../packages/economy/src/params.ts);
 the contracts take the same values at launch and nobody can change them afterwards.
-Merchant agents choose *strategy* within these rules (§8); they can't change the rules.
+Merchant agents choose *strategy* within these rules (§9); they can't change the rules.
 
-Run `node sim/run.ts` to see 60 days of the town under five scenarios (§9).
+Run `node sim/run.ts` to see 60 days of the town under five scenarios (§10).
 
 ## 1. Money and items
 
@@ -44,7 +44,7 @@ cash factor = clamp(shop cash / 600, 0.25, 1)
 
 - Each shop is an account (`<shop>.<town>`) holding its cash and stock, and an NEP-171
   **deed** (token id = shop id). The town holds all six deeds at genesis.
-- **The deed holder controls the shop.** They appoint its agent (§8) and collect its
+- **The deed holder controls the shop.** They appoint its agent (§9) and collect its
   dividends. When a deed changes hands, by transfer or at auction, the old agent is
   removed. Only the new holder can appoint one. The operator can't touch a player's shop.
 - **Upkeep:** 25 MERI per day to the treasury. Two missed days in a row → the shop closes,
@@ -88,18 +88,25 @@ cash factor = clamp(shop cash / 600, 0.25, 1)
 
 ## 6. The caravan
 
-Once a day:
+An open, sealed-bid import market, run by the contract every market day:
 
-- **Imports.** Every shop below half its target for a raw item joins one pooled order.
-  Three supplier agents submit sealed bids around 1.4× reference; the lowest wins. A shop
-  takes its share only if the price is below its own ask, spending at most half its cash.
-- **Exports.** Outside buyers post a standing bid around 0.55× reference for the day. Any
-  shop holding more than 1.5× target sells the excess into it. Their bid shrinks as their
-  coin runs low (× outside cash / 30,000), so a town that only exports eventually saturates
-  its buyers.
+1. **Orders.** At the end of each day, every open shop holding less than half its target of
+   a raw good it buys orders enough to reach target. The most it will pay is its own ask at
+   that stock.
+2. **Sealed bids (first half of the next day).** Any account can commit one sealed bid per
+   good: the sha256 of `"<day>:<item>:<price>:<salt>:<supplier>"`. Only the number of sealed
+   bids is visible.
+3. **Reveals (second half).** Suppliers reveal price and salt; the contract checks them
+   against the seal. Bids below the import cost (1.1× reference) are refused.
+4. **Settlement (end of day).** The lowest revealed price per good fills every order it's
+   within, up to what each shop still needs and half its cash. The shop pays the price; the
+   supplier keeps price minus the import cost, which goes to the outside traders.
 
-Together these set a **price corridor**: imports cap how high raw prices can go, and
-exports set a floor under them while outside buyers still have coin.
+So the caravan caps raw prices from above, and competition between suppliers pulls them
+toward cost. The game runs three supplier agents with different temperaments, and anyone
+else can join: the contract doesn't know who runs a supplier.
+
+Exports aren't on chain yet; the simulator still models them.
 
 ## 7. The Festival (memecoin mechanic)
 
@@ -127,7 +134,16 @@ Festival mints. Wash trading is a way to pay for someone else's party. It isn't 
 outright: someone willing to lose money can still keep a streak alive. Sign-up limits
 (one account per email, plus the 500 cap) are our defence for the demo, not a proof.
 
-## 8. What agents decide
+## 8. Guilds
+
+Guilds are Sputnik DAOs (`sputnikv2.testnet`) that the town charters and registers. Players
+join by proposal; the game's registrar approves players asking to join as themselves.
+Members pay MERI into the treasury (`pay_guild`) and vote, by simple majority, on proposals
+that the DAO executes against the town: bid for a deed (the guild then holds the shop and
+receives its dividends), share MERI out to members (`share_out`), or appoint a shop's agent.
+Proposals carry no bond, so players' limited keys can propose and vote.
+
+## 9. What agents decide
 
 | Merchant agents decide | Fixed by the contracts |
 | --- | --- |
@@ -138,7 +154,7 @@ outright: someone willing to lose money can still keep a streak alive. Sign-up l
 
 Supplier agents choose their sealed bids. Players do whatever they like.
 
-## 9. Simulation results (60 days, seed 7)
+## 10. Simulation results (60 days, seed 7)
 
 `node sim/run.ts`. Scenarios run with a mix of grinders, contract hunters and arbitrageurs.
 

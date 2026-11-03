@@ -8,12 +8,15 @@ export interface Config {
   town: string;
   game: string;
   dayMs: number;
+  guilds: string[];
   rules: { maxStamina: number; swingCost: number; breadStamina: number; toolYield: number; toolDurability: number; maxSwingsPerRequest: number };
 }
 
 interface Session {
   accountId: string;
   secretKey: string;
+  /** One key per guild DAO, able only to propose and vote there. */
+  guildKeys?: Record<string, string>;
 }
 
 const SESSION = 'meridian.session';
@@ -52,14 +55,19 @@ export function signOut() {
 
 export async function join(name: string): Promise<string> {
   const key = KeyPair.fromRandom('ed25519');
+  const guildKeys = Object.fromEntries(config.guilds.map(g => [g, KeyPair.fromRandom('ed25519')]));
   const res = await fetch('/api/join', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ name, publicKey: key.getPublicKey().toString() }),
+    body: JSON.stringify({
+      name,
+      publicKey: key.getPublicKey().toString(),
+      guildKeys: Object.fromEntries(Object.entries(guildKeys).map(([g, k]) => [g, k.getPublicKey().toString()])),
+    }),
   });
   const out = await res.json();
   if (!res.ok) throw new Error(out.error);
-  setSession({ accountId: out.accountId, secretKey: key.toString() });
+  setSession({ accountId: out.accountId, secretKey: key.toString(), guildKeys: Object.fromEntries(Object.entries(guildKeys).map(([g, k]) => [g, k.toString()])) });
   try {
     localStorage.setItem(SESSION, JSON.stringify(session));
   } catch {}
@@ -115,6 +123,20 @@ export async function getJSON<T>(path: string): Promise<T> {
   const out = await res.json();
   if (!res.ok) throw new Error(out.error);
   return out;
+}
+
+export const canUseGuild = (guild: string) => !!session?.guildKeys?.[guild];
+
+/** Propose or vote in a guild DAO, with that guild's key. */
+export async function guildCall(guild: string, methodName: string, args: object, tgas = 150): Promise<string> {
+  const secret = session?.guildKeys?.[guild];
+  if (!session || !secret) throw new Error('this character joined before the guilds opened');
+  try {
+    const res: any = await new Account(session.accountId, provider, secret as any).callFunctionRaw({ contractId: guild, methodName, args, gas: teraToGas(tgas) });
+    return res.transaction.hash;
+  } catch (e) {
+    throw new Error(readablePanic(e));
+  }
 }
 
 /** Send a transaction to the town as the player. Returns the call's result and tx hash. */

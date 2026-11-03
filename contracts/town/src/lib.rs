@@ -9,27 +9,30 @@ use near_contract_standards::fungible_token::events::{FtBurn, FtMint};
 use near_contract_standards::fungible_token::FungibleToken;
 use near_contract_standards::non_fungible_token::NonFungibleToken;
 use near_sdk::json_types::U128;
-use near_sdk::store::{IterableMap, LookupMap, Vector};
+use near_sdk::store::{IterableMap, IterableSet, LookupMap, Vector};
 use near_sdk::{env, near, require, AccountId, BorshStorageKey, PanicOnDefault};
 
+mod caravan;
 mod days;
 mod deeds;
 mod events;
 mod ft;
 mod jobs;
 mod market;
+mod migrate;
 mod mt;
 pub mod params;
 pub mod pricing;
 #[cfg(test)]
 mod tests;
 
+use caravan::Round;
 use deeds::Auction;
 use params::{Item, Params};
 
 #[near(serializers = [borsh])]
 #[derive(BorshStorageKey)]
-enum Key {
+pub(crate) enum Key {
     Coin,
     Items,
     Shops,
@@ -40,6 +43,10 @@ enum Key {
     DeedMeta,
     DeedEnum,
     Auctions,
+    // Added in V3 (caravan, guilds). Append only: stored prefixes come from this order.
+    CaravanRounds,
+    CaravanCommits,
+    Guilds,
 }
 
 #[near(serializers = [borsh, json])]
@@ -131,6 +138,11 @@ pub struct Town {
 
     pub(crate) deeds: NonFungibleToken,
     pub(crate) auctions: IterableMap<String, Auction>,
+
+    // V3: see migrate.rs
+    pub(crate) caravan_rounds: LookupMap<u32, Round>,
+    pub(crate) caravan_commits: LookupMap<(u32, Item, AccountId), Vec<u8>>,
+    pub(crate) guilds: IterableSet<AccountId>,
 }
 
 pub(crate) fn sub(name: &str) -> AccountId {
@@ -173,6 +185,9 @@ impl Town {
         let mut town = Self {
             deeds: NonFungibleToken::new(Key::DeedOwners, env::current_account_id(), Some(Key::DeedMeta), Some(Key::DeedEnum), Option::<Key>::None),
             auctions: IterableMap::new(Key::Auctions),
+            caravan_rounds: LookupMap::new(Key::CaravanRounds),
+            caravan_commits: LookupMap::new(Key::CaravanCommits),
+            guilds: IterableSet::new(Key::Guilds),
             owner,
             minter,
             genesis_ns: now,

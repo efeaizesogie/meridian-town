@@ -57,9 +57,11 @@ impl Town {
         let day = self.processed_days;
         self.produce("smith", &[Item::Wood, Item::Ore], Item::Tool, self.params.blacksmith_capacity);
         self.produce("baker", &[Item::Wheat], Item::Bread, self.params.baker_capacity);
+        self.settle_caravan(day);
         self.settle_auctions(day);
         self.collect_upkeep(day);
         self.pay_dividends();
+        self.open_caravan(day + 1);
     }
 
     fn produce(&mut self, shop_id: &str, inputs: &[Item], output: Item, capacity: u64) {

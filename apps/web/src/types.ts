@@ -101,3 +101,43 @@ export interface AgentReport {
   acted: { what: string; tx?: string; error?: string }[];
   at: number;
 }
+
+export interface CaravanRound {
+  day: number;
+  orders: { shop_id: string; item: Item; quantity: number; max_price: string }[];
+  commits: number[];
+  bids: { supplier: string; item: Item; price: string }[];
+  fills: { shop_id: string; item: Item; quantity: number; price: string; supplier: string }[];
+  settled: boolean;
+}
+
+export interface CaravanView {
+  round: CaravanRound | null;
+  phase: 'commit' | 'reveal' | 'closed';
+  phase_ends_ms: number;
+  import_cost: string[];
+  last: CaravanRound | null;
+}
+
+export interface SupplierInfo {
+  name: string;
+  style: string;
+  accountId: string;
+  bids: { day: number; item: Item; price: string; committed?: string; revealed?: string; error?: string }[];
+}
+
+export interface GuildView {
+  id: string;
+  title: string;
+  purpose: string;
+  members: string[];
+  treasury: string;
+  proposals: {
+    id: number;
+    proposer: string;
+    description: string;
+    kind: any;
+    status: string;
+    votes: Record<string, string>;
+  }[];
+}

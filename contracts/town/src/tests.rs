@@ -461,3 +461,113 @@ fn deeds_at_auction_cant_be_transferred() {
     as_("town.testnet", T0 + 11);
     t.nft_transfer(acc("cy.testnet"), "store".into(), None, None);
 }
+
+// ---------- caravan ----------
+
+fn seal(day: u32, item: &str, price: u128, salt: &str, supplier: &str) -> String {
+    let h = near_sdk::env::sha256(format!("{day}:{item}:{price}:{salt}:{supplier}").as_bytes());
+    h.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// The forge runs out of ore on day 0, so day 1's caravan carries an order for it.
+fn caravan_day_one() -> Town {
+    let mut t = genesis();
+    let ore = t.items_of(&sub("smith"), Item::Ore);
+    t.burn_items(&sub("smith"), Item::Ore, ore - 5, "test");
+    // Keep the forge from turning the leftover ore into tools overnight.
+    let wood = t.items_of(&sub("smith"), Item::Wood);
+    t.burn_items(&sub("smith"), Item::Wood, wood, "test");
+    run_to_day(&mut t, 0);
+    t
+}
+
+#[test]
+fn the_lowest_sealed_bid_fills_the_order() {
+    let mut t = caravan_day_one();
+    let view = t.get_caravan();
+    let order = view.round.as_ref().unwrap().orders.iter().find(|o| o.shop_id == "smith" && o.item == Item::Ore).cloned().unwrap();
+    assert_eq!(order.quantity, 25);
+    assert_eq!(view.phase, "commit");
+
+    let (a, b) = (7 * MICRO, 8 * MICRO);
+    as_("ann.trader.testnet", T0 + DAY_NS + 10);
+    t.caravan_commit(Item::Ore, seal(1, "ore", a, "s1", "ann.trader.testnet"));
+    as_("bo.trader.testnet", T0 + DAY_NS + 20);
+    t.caravan_commit(Item::Ore, seal(1, "ore", b, "s2", "bo.trader.testnet"));
+    assert_eq!(t.get_caravan().round.unwrap().commits, [0, 2, 0]);
+    assert!(t.get_caravan().round.unwrap().bids.is_empty(), "prices stay hidden until revealed");
+
+    as_("ann.trader.testnet", T0 + DAY_NS + DAY_NS / 2 + 10);
+    t.caravan_reveal(Item::Ore, U128(a), "s1".into());
+    as_("bo.trader.testnet", T0 + DAY_NS + DAY_NS / 2 + 20);
+    t.caravan_reveal(Item::Ore, U128(b), "s2".into());
+
+    let smith_cash = t.coin_of(&sub("smith"));
+    let outside = t.coin_of(&sub("outside"));
+    run_to_day(&mut t, 1);
+    let last = t.get_caravan().last.unwrap();
+    assert!(last.settled);
+    let fill = last.fills.iter().find(|f| f.shop_id == "smith").unwrap();
+    assert_eq!((fill.quantity, fill.price.0, fill.supplier.as_str()), (25, a, "ann.trader.testnet"));
+    let cost = 6 * MICRO * 11 / 10;
+    assert_eq!(t.coin_of(&acc("ann.trader.testnet")), (a - cost) * 25, "supplier keeps price minus import cost");
+    assert_eq!(t.coin_of(&sub("outside")) - outside, cost * 25);
+    assert!(t.coin_of(&sub("smith")) < smith_cash - a * 25 + MICRO, "the smith paid for the ore (and upkeep)");
+    assert_eq!(t.items_of(&sub("smith"), Item::Ore), 30);
+    assert_conserved(&t, &["ann.trader.testnet", "bo.trader.testnet"]);
+}
+
+#[test]
+#[should_panic(expected = "that isn't the bid you sealed")]
+fn a_reveal_must_match_the_seal() {
+    let mut t = caravan_day_one();
+    as_("ann.trader.testnet", T0 + DAY_NS + 10);
+    t.caravan_commit(Item::Ore, seal(1, "ore", 7 * MICRO, "s1", "ann.trader.testnet"));
+    as_("ann.trader.testnet", T0 + DAY_NS + DAY_NS / 2 + 10);
+    t.caravan_reveal(Item::Ore, U128(6_900_000), "s1".into());
+}
+
+#[test]
+#[should_panic(expected = "bids are sealed in the first half of the day")]
+fn no_sealing_after_the_window() {
+    let mut t = caravan_day_one();
+    as_("ann.trader.testnet", T0 + DAY_NS + DAY_NS / 2 + 10);
+    t.caravan_commit(Item::Ore, seal(1, "ore", 7 * MICRO, "s1", "ann.trader.testnet"));
+}
+
+#[test]
+#[should_panic(expected = "a bid can't be below the import cost")]
+fn no_bids_below_import_cost() {
+    let mut t = caravan_day_one();
+    as_("ann.trader.testnet", T0 + DAY_NS + 10);
+    t.caravan_commit(Item::Ore, seal(1, "ore", 6 * MICRO, "s1", "ann.trader.testnet"));
+    as_("ann.trader.testnet", T0 + DAY_NS + DAY_NS / 2 + 10);
+    t.caravan_reveal(Item::Ore, U128(6 * MICRO), "s1".into());
+}
+
+// ---------- guilds ----------
+
+#[test]
+fn guilds_collect_and_share_out() {
+    let mut t = genesis();
+    fund(&mut t, "ada.testnet", 100);
+    as_("owner.testnet", T0 + 1);
+    t.register_guild(acc("hammer.dao.testnet"));
+    as_("ada.testnet", T0 + 2);
+    t.pay_guild(acc("hammer.dao.testnet"), U128(60 * MICRO));
+    assert_eq!(t.coin_of(&acc("hammer.dao.testnet")), 60 * MICRO);
+    as_("hammer.dao.testnet", T0 + 3);
+    t.share_out(vec![(acc("ada.testnet"), U128(20 * MICRO)), (acc("bob.testnet"), U128(30 * MICRO))]);
+    assert_eq!(t.coin_of(&acc("bob.testnet")), 30 * MICRO);
+    assert_eq!(t.coin_of(&acc("hammer.dao.testnet")), 10 * MICRO);
+    assert_conserved(&t, &["ada.testnet", "bob.testnet", "hammer.dao.testnet"]);
+}
+
+#[test]
+#[should_panic(expected = "only a registered guild can share out")]
+fn only_guilds_share_out() {
+    let mut t = genesis();
+    fund(&mut t, "ada.testnet", 100);
+    as_("ada.testnet", T0 + 2);
+    t.share_out(vec![(acc("bob.testnet"), U128(20 * MICRO))]);
+}
