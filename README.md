@@ -6,9 +6,9 @@ mints or burns each week depending on whether the town kept trading.
 
 Built for NEAR HACKATHON (Nov 2026). Tracks: Games, NFTs, Memecoins, Social Money, AI Swarms.
 
-> Status: the game design, economy rules, simulator and core contract are done (coin,
-> goods, shops, trading, gathering, delivery contracts, Festival). Next: deeds, residents,
-> caravan, testnet deploy, then the game client.
+> Status: the game design, economy rules, simulator and core contract are done and
+> deployed to testnet (coin, goods, shops, trading, gathering, delivery contracts,
+> Festival). Next: deeds, residents, caravan, then the game client.
 
 ## Try it
 
@@ -21,6 +21,17 @@ node sim/trace.ts 30       # where the money sits every 6 days, 30 players
 node --test packages/economy/test/*.test.ts
 (cd contracts && cargo test)   # Linux/WSL; see contracts/README.md
 ```
+
+## Live on testnet
+
+The town runs at [`town.efecode.testnet`](https://testnet.nearblocks.io/address/town.efecode.testnet)
+with 15-minute market days (a Festival every 105 minutes).
+
+```bash
+node scripts/town.ts                    # day, Festival progress, grounds, every shop's prices
+```
+
+To deploy your own: `PARENT=<you>.testnet WASM=<built wasm> ./scripts/deploy-testnet.sh`.
 
 ## Docs
 
