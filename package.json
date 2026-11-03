@@ -1,0 +1,12 @@
+{
+  "name": "meridian-town",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "sim": "node sim/run.ts",
+    "test": "node --test packages/economy/test/*.test.ts"
+  }
+}
