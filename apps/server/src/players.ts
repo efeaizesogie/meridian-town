@@ -2,6 +2,7 @@
 // Everything of value (coins, goods, deeds) lives on chain.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { DEFAULT_PARAMS as P } from '@meridian/economy';
+import { freshProgress, maxStamina, type Progress } from './progression.ts';
 
 const DIR = new URL('../data/', import.meta.url);
 const FILE = new URL('players.json', DIR);
@@ -13,6 +14,7 @@ export interface PlayerState {
   toolUses: number;
   usedTx: string[]; // use_item transactions already credited
   joinedAt: number;
+  progress: Progress;
 }
 
 let players: Record<string, PlayerState> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
@@ -36,18 +38,22 @@ export const RULES = {
 };
 
 export function get(accountId: string): PlayerState | undefined {
-  return players[accountId];
+  const p = players[accountId];
+  if (p && !p.progress) p.progress = freshProgress(); // players from before progression
+  return p;
 }
 
+export const all = () => Object.keys(players).map(id => ({ accountId: id, ...get(id)! }));
+
 export function add(accountId: string, name: string) {
-  players[accountId] = { name, stamina: P.maxStamina, staminaAt: Date.now(), toolUses: 0, usedTx: [], joinedAt: Date.now() };
+  players[accountId] = { name, stamina: P.maxStamina, staminaAt: Date.now(), toolUses: 0, usedTx: [], joinedAt: Date.now(), progress: freshProgress() };
   dirty = true;
 }
 
 /** Stamina now, including regrowth since it was last measured. */
 export function staminaNow(p: PlayerState, dayMs: number): number {
   const grown = (P.staminaRegenPerDay * (Date.now() - p.staminaAt)) / dayMs;
-  return Math.min(P.maxStamina, p.stamina + grown);
+  return Math.min(maxStamina(p.progress), p.stamina + grown);
 }
 
 export function setStamina(p: PlayerState, value: number) {

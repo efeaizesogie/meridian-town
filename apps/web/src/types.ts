@@ -141,3 +141,35 @@ export interface GuildView {
     votes: Record<string, string>;
   }[];
 }
+
+export interface QuestView {
+  id: string;
+  title: string;
+  hint: string;
+  place: string;
+  xp: number;
+  done?: boolean;
+}
+
+/** The player's off-chain state from the game server: stamina, progression, quests. */
+export interface Me {
+  stamina: number;
+  maxStamina: number;
+  toolUses: number;
+  xp: number;
+  level: number;
+  title: string;
+  levelXp: number;
+  nextLevelXp: number;
+  cottage: { level: number; tool: number; bread: number; maxStamina: number; next: { level: number; maxStamina: number; cost: { tool: number; bread: number } } | null };
+  quests: QuestView[];
+  current: QuestView | null;
+  stats: { gathered: number; sold: number; delivered: number };
+}
+
+/** What the server says an action earned. */
+export interface Earned {
+  xp?: number;
+  quests?: string[];
+  levelUp?: { level: number; title: string } | null;
+}

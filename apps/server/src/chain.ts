@@ -110,14 +110,21 @@ export async function advanceTown() {
   await game.callFunction({ contractId: TOWN, methodName: 'advance', args: {}, gas: teraToGas(300) });
 }
 
-/** A finished, successful `use_item` call by `accountId` on the town, or null. */
-export async function verifyUseItem(txHash: string, accountId: string): Promise<{ item: string; quantity: number } | null> {
+/** A finished, successful call by `accountId` on the town: method, args and return value. */
+export async function verifyTownCall(txHash: string, accountId: string): Promise<{ method: string; args: any; value: any } | null> {
   const res: any = await provider.viewTransactionStatus({ txHash, accountId, waitUntil: 'FINAL' } as any);
   const tx = res.transaction;
   if (tx.signer_id !== accountId || tx.receiver_id !== TOWN) return null;
   if (!res.status || !('SuccessValue' in res.status)) return null;
   const call = tx.actions?.[0]?.FunctionCall;
-  if (!call || call.method_name !== 'use_item') return null;
-  const args = JSON.parse(Buffer.from(call.args, 'base64').toString());
-  return { item: args.item, quantity: Number(args.quantity) };
+  if (!call) return null;
+  const args = JSON.parse(Buffer.from(call.args, 'base64').toString() || '{}');
+  const raw = Buffer.from(res.status.SuccessValue, 'base64').toString();
+  return { method: call.method_name, args, value: raw ? JSON.parse(raw) : null };
+}
+
+/** A finished, successful `use_item` call by `accountId` on the town, or null. */
+export async function verifyUseItem(txHash: string, accountId: string): Promise<{ item: string; quantity: number } | null> {
+  const c = await verifyTownCall(txHash, accountId);
+  return c?.method === 'use_item' ? { item: c.args.item, quantity: Number(c.args.quantity) } : null;
 }

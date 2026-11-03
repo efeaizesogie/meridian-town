@@ -33,9 +33,11 @@ node --env-file-if-exists=.env apps/server/src/main.ts   # http://localhost:8787
 ```
 
 Pick a name and you're in: the server creates `<name>.game.efecode.testnet` with a key that
-lives in your browser and can only call the town contract. Gather at the Forest, the Mine
-or the Fields, sell to whichever shop pays best (hover a price to see the rule behind it),
-buy bread when you're tired, take delivery contracts, and bid for deeds.
+lives in your browser and can only call the town contract. The town map is the main screen:
+click a place to go there. A quest scroll walks you through the first session (gather →
+sell to the best buyer → eat → deliver a contract → build your cottage → join a guild →
+bid for a deed), with XP, levels and titles for work verified on chain. See
+[docs/HOW-TO-PLAY.md](docs/HOW-TO-PLAY.md).
 
 **Fast-forward.** Press *Fast-forward a week* above the market square to replay the next
 seven market days in a minute (or 15 seconds) on a copy of the live town, with 5, 30 or 100
@@ -87,6 +89,8 @@ To deploy your own: `PARENT=<you>.testnet WASM=<built wasm> ./scripts/deploy-tes
 
 ## Docs
 
+- [docs/HOW-TO-PLAY.md](docs/HOW-TO-PLAY.md): the player's guide (also in the game, under 📖).
+- [docs/GAME.md](docs/GAME.md): the game design: fantasy, loops, progression, first session, feel.
 - [docs/DESIGN.md](docs/DESIGN.md): the game loop (every 30 seconds, 5 minutes and
   session) and what lives on chain.
 - [docs/RULES.md](docs/RULES.md): every price, upkeep, contract, caravan and Festival

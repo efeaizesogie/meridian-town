@@ -6,8 +6,9 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PublicKey } from 'near-api-js';
-import { GAME, NETWORK, RPCS, TOWN, accountExists, advanceTown, createPlayer, gatherBatch, hasKey, verifyUseItem, view, type GatherOrder } from './chain.ts';
+import { GAME, NETWORK, RPCS, TOWN, accountExists, advanceTown, createPlayer, gatherBatch, hasKey, verifyTownCall, verifyUseItem, view, type GatherOrder } from './chain.ts';
 import * as players from './players.ts';
+import * as prog from './progression.ts';
 import { PERSONAS, agentAccount, getReports, startAgents } from './agents.ts';
 import { getSupplierBids, startSuppliers } from './suppliers.ts';
 import { readGuilds, runRegistrar, type GuildView } from './guilds.ts';
@@ -22,6 +23,26 @@ let dayMs = 900_000;
 let params: any = null;
 let world: any = null;
 const playerCache = new Map<string, { at: number; data: unknown }>();
+
+// ---------- leaderboard: purses and shops of known players, refreshed each minute ----------
+
+let leaders: { accountId: string; name: string; title: string; level: number; coins: string; deeds: string[] }[] = [];
+async function readLeaders() {
+  const rows = [];
+  for (const p of players.all().slice(0, 60)) {
+    const pv: any = await playerView(p.accountId).catch(() => null);
+    rows.push({
+      accountId: p.accountId,
+      name: p.name,
+      ...prog.levelOf(p.progress.xp),
+      coins: pv?.coins ?? '0',
+      deeds: (world?.shops ?? []).filter((s: any) => s.deed_holder === p.accountId).map((s: any) => s.shop.name),
+    });
+  }
+  leaders = rows.sort((a, b) => b.deeds.length - a.deeds.length || Number(BigInt(b.coins) - BigInt(a.coins))).slice(0, 20);
+}
+setInterval(() => readLeaders().catch(e => console.error('leaders', e instanceof Error ? e.message : e)), 60_000).unref();
+setTimeout(() => readLeaders().catch(() => {}), 8_000).unref();
 
 let lastSlowRead = 0;
 let guildViews: GuildView[] = [];
@@ -163,7 +184,41 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
   if (req.method === 'POST' && url.pathname === '/api/me') {
     const accountId = await authenticate(req, body);
     const p = players.get(accountId)!;
-    return { accountId, name: p.name, stamina: players.staminaNow(p, dayMs), toolUses: p.toolUses };
+    // Joining a guild shows up in the DAO's member list rather than being reported.
+    if (guildViews.some(g => g.members.includes(accountId)) && prog.complete(p.progress, 'guild')) players.save();
+    return { accountId, name: p.name, stamina: players.staminaNow(p, dayMs), toolUses: p.toolUses, ...prog.view(p.progress) };
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/report') {
+    // The client reports a transaction it sent; XP and quests follow only if it succeeded on chain.
+    const accountId = await authenticate(req, body);
+    const { txHash } = JSON.parse(body);
+    const p = players.get(accountId)!;
+    if (p.progress.reported.includes(txHash)) throw new HttpError(409, 'already reported');
+    const c = await verifyTownCall(String(txHash), accountId);
+    if (!c) throw new HttpError(400, 'not a successful town transaction from you');
+    p.progress.reported = [...p.progress.reported.slice(-300), txHash];
+    const meri = (v: unknown) => Math.floor(Number(v ?? 0) / 1e6);
+    const done: string[] = [];
+    const quest = (id: string) => {
+      const q = prog.complete(p.progress, id);
+      if (q) done.push(q.title);
+    };
+    let gained = 0;
+    if (c.method === 'sell') { gained = meri(c.value) * prog.XP.perMeriSold; p.progress.stats.sold += meri(c.value); quest('sell'); }
+    if (c.method === 'deliver') { gained = meri(c.value) * prog.XP.perMeriDelivered; p.progress.stats.delivered += meri(c.value); quest('deliver'); }
+    if (c.method === 'bid_for_deed') { gained = prog.XP.deedBid; quest('deed'); }
+    if (c.method === 'pay_guild') gained = prog.XP.guildPayIn;
+    if (c.method === 'claim_festival') gained = prog.XP.festivalClaim;
+    const before = prog.levelOf(p.progress.xp).level;
+    p.progress.xp += gained;
+    players.save();
+    const after = prog.levelOf(p.progress.xp);
+    return { xp: gained, quests: done, levelUp: after.level > before ? after : null };
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/leaders') {
+    return leaders;
   }
 
   if (req.method === 'POST' && url.pathname === '/api/gather') {
@@ -186,22 +241,44 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
       const wasted = Math.floor((wanted - got) / (withTool > 0 ? R.toolYield : 1));
       players.setStamina(p, players.staminaNow(p, dayMs) + wasted * R.swingCost);
     }
+    const before = prog.levelOf(p.progress.xp).level;
+    p.progress.xp += got * prog.XP.perUnitGathered;
+    p.progress.stats.gathered += got;
+    const q = got > 0 ? prog.complete(p.progress, 'swing') : null;
     players.save();
-    return { item, gathered: got, wanted, stamina: players.staminaNow(p, dayMs), toolUses: p.toolUses };
+    const after = prog.levelOf(p.progress.xp);
+    return { item, gathered: got, wanted, stamina: players.staminaNow(p, dayMs), toolUses: p.toolUses, xp: got, quests: q ? [q.title] : [], levelUp: after.level > before ? after : null };
   }
 
   if (req.method === 'POST' && url.pathname === '/api/use') {
     const accountId = await authenticate(req, body);
-    const { txHash } = JSON.parse(body);
+    const { txHash, purpose = 'use' } = JSON.parse(body);
     const p = players.get(accountId)!;
     if (p.usedTx.includes(txHash)) throw new HttpError(409, 'already credited');
     const used = await verifyUseItem(String(txHash), accountId);
     if (!used) throw new HttpError(400, 'not a successful use_item transaction from you');
     p.usedTx = [...p.usedTx.slice(-200), txHash];
-    if (used.item === 'bread') players.setStamina(p, Math.min(R.maxStamina, players.staminaNow(p, dayMs) + used.quantity * R.breadStamina));
-    if (used.item === 'tool') p.toolUses += used.quantity * R.toolDurability;
+    const before = prog.levelOf(p.progress.xp).level;
+    const done: string[] = [];
+    let built = 0;
+    if (purpose === 'cottage') {
+      built = prog.build(p.progress, used.item as 'tool' | 'bread', used.quantity);
+      if (p.progress.cottage.level >= 2) {
+        const q = prog.complete(p.progress, 'cottage');
+        if (q) done.push(q.title);
+      }
+    } else {
+      if (used.item === 'bread') {
+        players.setStamina(p, Math.min(prog.maxStamina(p.progress), players.staminaNow(p, dayMs) + used.quantity * R.breadStamina));
+        p.progress.xp += prog.XP.eat;
+        const q = prog.complete(p.progress, 'eat');
+        if (q) done.push(q.title);
+      }
+      if (used.item === 'tool') p.toolUses += used.quantity * R.toolDurability;
+    }
     players.save();
-    return { stamina: players.staminaNow(p, dayMs), toolUses: p.toolUses };
+    const after = prog.levelOf(p.progress.xp);
+    return { stamina: players.staminaNow(p, dayMs), toolUses: p.toolUses, built, cottage: p.progress.cottage, quests: done, levelUp: after.level > before ? after : null };
   }
 
   throw new HttpError(404, 'not found');
