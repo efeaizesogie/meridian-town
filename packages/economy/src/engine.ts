@@ -54,6 +54,22 @@ export interface WeekResult {
   streak: number;
 }
 
+export type EventKind = 'contract' | 'filled' | 'closed' | 'auction' | 'rescue' | 'caravan' | 'festival';
+
+export interface TownEvent {
+  tick: number;
+  kind: EventKind;
+  text: string;
+}
+
+/** The parts of a live town (from the contract's views) that a simulation starts from. */
+export interface LiveTown {
+  treasury: number;
+  grounds: number[]; // wood, ore, wheat
+  weekTarget: number;
+  shops: { id: string; cash: number; stock: number[]; target: number[]; open: boolean; owner: string }[];
+}
+
 export interface DayStats {
   day: number;
   players: number;
@@ -116,6 +132,7 @@ export class Town {
   bestStreak = 0;
   weeks: WeekResult[] = [];
   days: DayStats[] = [];
+  events: TownEvent[] = [];
   private nextJobId = 1;
   exportPrice: Partial<Record<Item, number>> = {};
   ground: Partial<Record<Item, number>> = {};
@@ -129,6 +146,33 @@ export class Town {
     this.genesisSupply = p.genesisTreasury + p.outsideStartCoins + p.genesisShopCash * this.shops.length;
     this.weekTarget = p.targetFloor;
     for (const item of RAW) this.ground[item] = p.groundRegenPerDay[item] * p.groundCapacityDays;
+  }
+
+  /** Start from a live town's state instead of genesis. Amounts in MERI, stock in units. */
+  static fromLive(p: Params, live: LiveTown, seed = 1): Town {
+    const t = new Town(p, seed);
+    t.treasury = live.treasury;
+    t.weekTarget = live.weekTarget;
+    RAW.forEach((item, i) => (t.ground[item] = live.grounds[i] ?? t.ground[item]));
+    for (const ls of live.shops) {
+      const s = t.shops.find(x => x.id === ls.id);
+      if (!s) continue;
+      s.cash = ls.cash;
+      s.open = ls.open;
+      s.owner = ls.owner;
+      ITEMS.forEach((item, i) => {
+        s.stock[item] = ls.stock[i] ?? 0;
+        if (s.target[item] !== undefined && ls.target[i] > 0) s.target[item] = ls.target[i];
+      });
+      s.cashAtDayStart = s.cash;
+    }
+    // The live supply isn't the genesis supply; re-base so coin conservation still holds.
+    t.genesisSupply = t.coinsAccountedFor();
+    return t;
+  }
+
+  private note(kind: EventKind, text: string) {
+    this.events.push({ tick: this.tick, kind, text });
   }
 
   get day() { return Math.floor(this.tick / this.p.ticksPerDay); }
@@ -308,6 +352,7 @@ export class Town {
         s.cash -= escrow;
         this.jobs.push({ id: this.nextJobId++, shopId: s.id, item, qty, unitPrice, escrow, deadline: this.tick + this.p.jobHours });
         this.today.jobsPosted++;
+        this.note('contract', `${s.name} posts a contract: ${qty} ${item} at ${unitPrice.toFixed(2)}, ${escrow.toFixed(0)} MERI in escrow`);
       }
     }
   }
@@ -326,7 +371,10 @@ export class Town {
       pl.cash += pay;
       pl.earned += pay;
       pl.weekVolume += pay;
-      if (j.qty === 0) this.today.jobsFilled++;
+      if (j.qty === 0) {
+        this.today.jobsFilled++;
+        this.note('filled', `${shop.name}'s ${item} contract is filled`);
+      }
     }
     this.jobs = this.jobs.filter(j => j.qty > 0);
   }
@@ -458,6 +506,7 @@ export class Town {
           s.stock[item] += n;
           this.outsideCash += n * price;
           this.today.imported += n;
+          this.note('caravan', `Caravan brings ${n} ${item} to ${s.name} at ${price.toFixed(2)} each`);
         }
       }
       // Exports: outside buyers post today's standing bid; the best one holds all day.
@@ -489,7 +538,11 @@ export class Town {
     for (const s of this.shops) {
       if (!s.open) continue;
       if (s.cash >= p.upkeep) { s.cash -= p.upkeep; this.treasury += p.upkeep; s.missedUpkeep = 0; }
-      else if (++s.missedUpkeep >= p.missedUpkeepToClose) { s.open = false; s.closedDays = 0; }
+      else if (++s.missedUpkeep >= p.missedUpkeepToClose) {
+        s.open = false;
+        s.closedDays = 0;
+        this.note('closed', `${s.name} can't pay its upkeep and closes. Its deed goes to auction`);
+      }
     }
     // Auctions for closed shops (RULES.md §3).
     for (const s of this.shops) {
@@ -503,10 +556,12 @@ export class Town {
         top.spent += bid;
         s.cash += bid;
         s.owner = top.id;
+        this.note('auction', `${top.id} wins ${s.name}'s deed for ${bid.toFixed(0)} MERI and reopens it`);
       } else if (s.closedDays >= p.auctionDaysBeforeTownRescue && this.treasury > p.auctionReserve * 2) {
         this.treasury -= p.auctionReserve * 2;
         s.cash += p.auctionReserve * 2;
         s.owner = 'town';
+        this.note('rescue', `Nobody bid for ${s.name}; the treasury reopens it`);
       } else continue;
       s.open = true;
       s.missedUpkeep = 0;
@@ -556,6 +611,9 @@ export class Town {
       this.streak = 0;
     }
     this.weeks.push({ week: this.weeks.length + 1, target: this.weekTarget, volume, hit, minted, burned, streak: this.streak });
+    this.note('festival', hit
+      ? `Festival! The town traded ${volume.toFixed(0)} of ${this.weekTarget.toFixed(0)} MERI. ${minted.toFixed(0)} new MERI go to the traders`
+      : `No festival: ${volume.toFixed(0)} of ${this.weekTarget.toFixed(0)} MERI traded. ${burned.toFixed(0)} MERI of the treasury burns`);
     this.weekVolumes.push(volume);
     const recent = this.weekVolumes.slice(-2);
     this.weekTarget = Math.max(p.targetFloor, p.targetGrowth * (recent.reduce((a, b) => a + b, 0) / recent.length));

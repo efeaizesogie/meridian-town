@@ -55,3 +55,22 @@ test('same seed, same town', () => {
   };
   assert.equal(run(), run());
 });
+
+test('a town seeded from live state keeps its books and logs what happens', () => {
+  const t = Town.fromLive(DEFAULT_PARAMS, {
+    treasury: 18_000,
+    grounds: [10, 45, 115],
+    weekTarget: 1_000,
+    shops: [
+      { id: 'smith', cash: 900, stock: [0, 0, 0, 0, 50], target: [33, 33, 0, 0, 18], open: true, owner: 'efecode.testnet' },
+      { id: 'store', cash: 20, stock: [0, 0, 0, 40, 10], target: [0, 0, 0, 40, 10], open: true, owner: 'town' },
+    ],
+  }, 3);
+  assert.equal(t.shops.find(s => s.id === 'smith')!.stock.tool, 50);
+  assert.equal(t.ground.wood, 10);
+  t.runDays(7, tw => tw.setActivePlayers(30, MIX));
+  assert.ok(Math.abs(t.coinsAccountedFor() - t.supply) < 1e-6 * t.supply);
+  assert.ok(t.events.some(e => e.kind === 'contract'), 'the empty forge posts a contract');
+  assert.ok(t.events.some(e => e.kind === 'closed'), 'the broke store closes');
+  assert.equal(t.events.filter(e => e.kind === 'festival').length, 1);
+});

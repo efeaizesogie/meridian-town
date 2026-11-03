@@ -7,6 +7,7 @@ import { TopBar } from './TopBar';
 import { Grounds } from './Grounds';
 import { ShopCard } from './ShopCard';
 import { Inventory, NoticeBoard, Deeds, TownLog } from './Panels';
+import { FastForward } from './FastForward';
 
 export interface World {
   town: TownView;
@@ -36,6 +37,7 @@ export default function App() {
   const [prev, setPrev] = useState<World | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [log, setLog] = useState<LogLine[]>([]);
+  const [fastForward, setFastForward] = useState(false);
 
   useEffect(() => {
     loadConfig().then(c => {
@@ -143,7 +145,10 @@ export default function App() {
           <Inventory world={world} busy={busy} onUse={actions.use} />
         </section>
         <section className="col square">
-          <h2 className="section-title">The market square</h2>
+          <div className="square-head">
+            <h2 className="section-title">The market square</h2>
+            <button onClick={() => setFastForward(true)} title="Replay the next market week in a minute, on a copy of the town">⏩ Fast-forward a week</button>
+          </div>
           <div className="shops">
             {world.shops.map(s => (
               <ShopCard key={s.shop.id} shop={s} agent={world.agents?.[s.shop.id]} explorer={config.network === 'mainnet' ? 'https://nearblocks.io' : 'https://testnet.nearblocks.io'} prev={prev?.shops.find(p => p.shop.id === s.shop.id)} params={world.params} player={world.player} busy={busy} onSell={actions.sell} onBuy={actions.buy} />
@@ -156,6 +161,7 @@ export default function App() {
           <TownLog log={log} busy={busy} />
         </section>
       </main>
+      {fastForward && <FastForward world={world} onClose={() => setFastForward(false)} />}
     </div>
   );
 }

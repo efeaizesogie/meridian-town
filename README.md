@@ -9,7 +9,8 @@ Built for NEAR HACKATHON (Nov 2026). Tracks: Games, NFTs, Memecoins, Social Mone
 > Status: the game design, economy rules, simulator and core contract are done and
 > deployed to testnet (coin, goods, shops, trading, gathering, delivery contracts,
 > Festival, deeds), the game is playable in the browser, and six merchant agents run the
-> shops on chain. Next: residents, the caravan, guilds and fast-forward mode.
+> shops on chain, and fast-forward replays a week in a minute. Next: guilds, the caravan
+> bidding round and resident demand on chain.
 
 ## Try it
 
@@ -35,6 +36,12 @@ Pick a name and you're in: the server creates `<name>.game.efecode.testnet` with
 lives in your browser and can only call the town contract. Gather at the Forest, the Mine
 or the Fields, sell to whichever shop pays best (hover a price to see the rule behind it),
 buy bread when you're tired, take delivery contracts, and bid for deeds.
+
+**Fast-forward.** Press *Fast-forward a week* above the market square to replay the next
+seven market days in a minute (or 15 seconds) on a copy of the live town, with 5, 30 or 100
+simulated players: prices, tills, contracts, caravans, closures, auctions and the Festival,
+on the same rules the contract enforces (`packages/economy`, whose prices the contract
+tests are pinned to). Nothing is sent to the chain.
 
 **Merchant agents.** Each shop is run by an agent with its own account
 (`hilde.game.efecode.testnet` and so on) whose only key can call `set_target`, `post_job` and
