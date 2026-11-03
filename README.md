@@ -9,8 +9,8 @@ Built for NEAR HACKATHON (Nov 2026). Tracks: Games, NFTs, Memecoins, Social Mone
 > Status: the game design, economy rules, simulator and core contract are done and
 > deployed to testnet (coin, goods, shops, trading, gathering, delivery contracts,
 > Festival, deeds), the game is playable in the browser, and six merchant agents run the
-> shops on chain, and fast-forward replays a week in a minute. Next: guilds, the caravan
-> bidding round and resident demand on chain.
+> shops on chain, a sealed-bid caravan with supplier agents runs every market day, guilds
+> are Sputnik DAOs, and fast-forward replays a week in a minute.
 
 ## Try it
 
@@ -42,6 +42,17 @@ seven market days in a minute (or 15 seconds) on a copy of the live town, with 5
 simulated players: prices, tills, contracts, caravans, closures, auctions and the Festival,
 on the same rules the contract enforces (`packages/economy`, whose prices the contract
 tests are pinned to). Nothing is sent to the chain.
+
+**The caravan.** Each market day, shops short of raw goods pool their orders and outside
+suppliers bid for them in a sealed-bid round run by the contract: seal a hash of your price
+in the first half of the day, reveal it in the second, lowest price fills. Three supplier
+agents (`varga`, `sable`, `longroad`) bid with different temperaments; anyone else can bid
+with `caravan_commit` / `caravan_reveal`. See docs/RULES.md §6.
+
+**Guilds.** Sputnik DAOs chartered by the town (`node scripts/create-guilds.ts`, about
+6 NEAR each). Players join by proposal, pay MERI into the treasury and vote to bid for
+deeds, share out earnings or appoint a shop's agent; the DAO executes the winning
+proposals against the town. See docs/RULES.md §8.
 
 **Merchant agents.** Each shop is run by an agent with its own account
 (`hilde.game.efecode.testnet` and so on) whose only key can call `set_target`, `post_job` and
