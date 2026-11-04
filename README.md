@@ -35,7 +35,10 @@ node --env-file-if-exists=.env apps/server/src/main.ts   # http://localhost:8787
 Pick a name and you're in: the server creates `<name>.game.efecode.testnet` with a key that
 lives in your browser and can only call the town contract. The town is a 3D island that
 follows the market clock (add `?time=day`, `dusk` or `night` to preview); click a place and
-the camera flies there. 🗺️ switches to a 2D map. A quest scroll walks you through the first session (gather →
+the camera flies there. When a contract is delivered or the caravan fills an order, a porter
+carries the goods to the shop; when the town hits its Festival, fireworks go up over the stage
+(preview with `?porters=1` and `?fireworks=1`). The soundtrack, "Market Day", is composed and
+synthesized in the browser, with a softer night version (🎵 to toggle). 🗺️ switches to a 2D map. A quest scroll walks you through the first session (gather →
 sell to the best buyer → eat → deliver a contract → build your cottage → join a guild →
 bid for a deed), with XP, levels and titles for work verified on chain. See
 [docs/HOW-TO-PLAY.md](docs/HOW-TO-PLAY.md).

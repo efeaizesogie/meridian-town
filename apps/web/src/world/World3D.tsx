@@ -20,6 +20,7 @@ import {
 } from './places';
 import { Avatar, Clouds, Decor, Fireflies, Smoke, Townsfolk } from './life';
 import { KitPreview } from './KitPreview';
+import { Fireworks, Porters, useFestivalCelebration } from './events';
 
 const SHOPS = ['lumberyard', 'mine', 'granary', 'smith', 'baker', 'store'];
 
@@ -215,6 +216,7 @@ function Scene({ world, onOpen, selected, questPlace, account, working, lowPower
   const forced = { day: 0.35, dusk: 0.69, night: 0.93 }[new URLSearchParams(location.search).get('time') ?? ''];
   const intoDay = forced ?? (((now - skewMs - genesisMs) % dayMs) + dayMs) % dayMs / dayMs;
   const { night } = daylight(intoDay);
+  const celebrating = useFestivalCelebration(world);
   const spot = (p: Place, node: React.ReactNode, opts: { ring?: number; labelY?: number; scale?: number; sign?: { text: string; hot: boolean } } = {}) => (
     <Spot key={p} place={p} onOpen={onOpen} selected={selected === p} quest={questPlace === p} ring={opts.ring} labelY={opts.labelY} scale={opts.scale} sign={opts.sign?.text} hot={opts.sign?.hot}>
       {node}
@@ -258,6 +260,8 @@ function Scene({ world, onOpen, selected, questPlace, account, working, lowPower
       <Clouds />
       <Fireflies night={night} />
       <Chatter world={world} />
+      <Porters world={world} />
+      <Fireworks active={celebrating} />
 
       {!lowPower && (
         <EffectComposer multisampling={0}>

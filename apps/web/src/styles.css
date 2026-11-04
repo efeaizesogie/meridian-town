@@ -170,6 +170,10 @@ input.small { padding: 4px 8px; width: 90px; font-family: var(--mono); }
 .label3d b.hot { background: #fbe2c4; border-color: #b5532a; color: #8a2f12; }
 .label3d.on span { background: #fff4d6; outline: 2px solid #b7862b; }
 .quest3d { width: 28px; height: 28px; border-radius: 50%; background: #ffc94d; color: #5a3a00; font: 900 22px var(--serif); display: grid; place-items: center; box-shadow: 0 0 0 4px rgba(255, 201, 77, 0.35), 0 4px 10px rgba(0, 0, 0, 0.3); animation: bob 1.2s ease-in-out infinite; }
+.porter3d { font: 700 12px var(--sans); color: #2b2118; background: #fffaf0; border: 1.5px solid #b7862b; padding: 1px 8px; border-radius: 99px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25); }
+.porter3d.done { background: #e3f1e6; border-color: #2f7d4f; color: #1f5a37; animation: riseup 1.6s ease-out forwards; }
+@keyframes riseup { 0% { transform: translateY(6px); opacity: 0; } 15% { transform: none; opacity: 1; } 100% { transform: translateY(-36px); opacity: 0; } }
+.hud-menu button.off { opacity: 0.45; }
 .you3d { font: 700 12px var(--sans); color: #fff; background: #2f5d7a; padding: 2px 8px; border-radius: 99px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); }
 .bubble3d { width: 210px; font: 13px/1.35 var(--serif); color: #2b2118; background: #fffaf0; border: 1.5px solid #6b4f2a; border-radius: 14px; padding: 8px 12px; box-shadow: 0 6px 16px rgba(40, 25, 5, 0.3); position: relative; animation: toastin 0.3s ease-out; }
 .bubble3d::after { content: ''; position: absolute; left: 50%; bottom: -9px; width: 14px; height: 14px; background: #fffaf0; border-right: 1.5px solid #6b4f2a; border-bottom: 1.5px solid #6b4f2a; transform: translateX(-50%) rotate(45deg); }

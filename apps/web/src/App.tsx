@@ -9,7 +9,7 @@ import { PlaceDrawer, type Actions } from './Places';
 import { TownLog } from './Panels';
 import { FastForward } from './FastForward';
 import { Guide, Leaders } from './Guide';
-import { play, reducedMotion, startAmbience } from './juice';
+import { play, reducedMotion, startAmbience, startMusic } from './juice';
 import { World3D } from './world/World3D';
 
 const savedGfx = (): '3d' | '2d' => {
@@ -120,14 +120,18 @@ export default function App() {
 
   // Ambience starts with the first click (browsers only allow sound after a gesture).
   useEffect(() => {
+    const night = () => {
+      const w = worldRef.current;
+      if (!w) return 0;
+      const forced = { day: 0, dusk: 0, night: 1 }[new URLSearchParams(location.search).get('time') ?? ''];
+      if (forced !== undefined) return forced;
+      const { genesisMs, dayMs, skewMs } = w.clock;
+      const into = (((Date.now() - skewMs - genesisMs) % dayMs) + dayMs) % dayMs / dayMs;
+      return into < 0.7 ? 0 : into < 0.85 ? (into - 0.7) / 0.15 : 1;
+    };
     const begin = () => {
-      startAmbience(() => {
-        const w = worldRef.current;
-        if (!w) return 0;
-        const { genesisMs, dayMs, skewMs } = w.clock;
-        const into = (((Date.now() - skewMs - genesisMs) % dayMs) + dayMs) % dayMs / dayMs;
-        return into < 0.7 ? 0 : into < 0.85 ? (into - 0.7) / 0.15 : 1;
-      });
+      startAmbience(night);
+      startMusic(night);
       play('swing'); // wakes the audio context on this gesture; quiet thunk as a welcome
     };
     window.addEventListener('pointerdown', begin, { once: true });

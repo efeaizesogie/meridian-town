@@ -1,7 +1,7 @@
 // The heads-up display: who you are and how you're doing, the clock, and the Festival.
 import { useEffect, useRef, useState } from 'react';
 import type { World } from './App';
-import { isMuted, setMuted } from './juice';
+import { isMuted, isMusicOn, setMuted, setMusicOn } from './juice';
 import { fmt, meri, short } from './types';
 
 function useNow(ms = 1000) {
@@ -54,6 +54,7 @@ export function Hud({ world, account, purseRef, onSignOut, onGuide, onLeaders, o
 }) {
   const now = useNow();
   const [muted, setM] = useState(isMuted());
+  const [musicOn, setMusic] = useState(isMusicOn());
   const { genesisMs, dayMs, skewMs } = world.clock;
   const elapsed = now - skewMs - genesisMs;
   const day = Math.floor(elapsed / dayMs);
@@ -107,6 +108,7 @@ export function Hud({ world, account, purseRef, onSignOut, onGuide, onLeaders, o
         <button onClick={onGuide} title="How to play">📖</button>
         <button onClick={onLeaders} title="Leaderboard">🏆</button>
         <button onClick={onGfx} title={gfx === '3d' ? 'Switch to the 2D map (lighter on old devices)' : 'Switch to the 3D island'}>{gfx === '3d' ? '🗺️' : '🏝️'}</button>
+        <button onClick={() => { setMusicOn(!musicOn); setMusic(!musicOn); }} title={musicOn ? 'Music on' : 'Music off'} aria-pressed={musicOn} className={musicOn ? '' : 'off'}>🎵</button>
         <button onClick={() => { setMuted(!muted); setM(!muted); }} title={muted ? 'Sound off' : 'Sound on'} aria-pressed={!muted}>{muted ? '🔇' : '🔊'}</button>
         <button onClick={onSignOut} title="Forget this browser's key">⏏</button>
       </nav>
