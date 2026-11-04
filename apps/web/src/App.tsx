@@ -300,7 +300,7 @@ export default function App() {
       <main className={`stage ${place ? 'with-drawer' : ''}`}>
         <div className="map-wrap">
           {gfx === '3d'
-            ? <World3D world={world} onOpen={open} selected={place} questPlace={qp} account={account} onFail={() => switchGfx('2d')} />
+            ? <World3D world={world} onOpen={open} selected={place} questPlace={qp} account={account} working={busy === 'Gather'} onFail={() => switchGfx('2d')} />
             : <TownMap world={world} onOpen={open} selected={place} questPlace={qp} here={here} />}
           <div className="floaters" aria-hidden>
             {floaters.map(f => (

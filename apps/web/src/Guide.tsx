@@ -81,6 +81,7 @@ const CHAPTERS: { title: string; body: React.ReactNode }[] = [
           <li><strong>Merchants and suppliers</strong> are AI agents with their own accounts. Their keys can only do what the town's rules allow.</li>
         </ul>
         <p>Your key lives in this browser, and the game pays your gas. No wallet, no seed phrase.</p>
+        <p className="muted">3D models by Kenney (kenney.nl), CC0. Everything else is made for Meridian.</p>
       </>
     ),
   },

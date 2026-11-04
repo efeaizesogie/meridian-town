@@ -10,12 +10,16 @@ import type { World } from '../App';
 import type { Place } from '../TownMap';
 import { ICON, ITEMS, KEEPERS, meri, short, type Item } from '../types';
 import { at, daylight, ISLAND_RADIUS, PALETTE } from './layout';
-import { Lantern, Mat } from './models';
+import { Mat } from './models';
+import { Piece, preloadKit, town } from './kit';
+
+preloadKit();
 import {
   AuctionModel, BoardModel, CaravanModel, CottageModel, FestivalModel, FieldsModel, ForestModel, Fountain,
-  GuildHallModel, Keeper, MineModel, ShopModel, Spot,
+  Glow, GuildHallModel, Keeper, MineModel, ShopModel, Spot,
 } from './places';
 import { Avatar, Clouds, Decor, Fireflies, Smoke, Townsfolk } from './life';
+import { KitPreview } from './KitPreview';
 
 const SHOPS = ['lumberyard', 'mine', 'granary', 'smith', 'baker', 'store'];
 
@@ -201,7 +205,7 @@ function Chatter({ world }: { world: World }) {
   );
 }
 
-function Scene({ world, onOpen, selected, questPlace, account, lowPower }: Props & { lowPower: boolean }) {
+function Scene({ world, onOpen, selected, questPlace, account, working, lowPower }: Props & { lowPower: boolean }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 2000);
@@ -225,7 +229,14 @@ function Scene({ world, onOpen, selected, questPlace, account, lowPower }: Props
       <Paths />
       <Decor />
       <Fountain />
-      {[[5, 5], [-5, 5], [5, -5], [-5, -5]].map(([x, z]) => <Lantern key={`${x}${z}`} position={[x, 0, z]} lit={night} />)}
+      {[[5, 5], [-5, 5], [5, -5], [-5, -5]].map(([x, z]) => (
+        <group key={`${x}${z}`} position={[x, 0, z]}>
+          <Piece src={town('lantern')} scale={1.5} />
+          <Glow position={[0, 2.0, 0]} on={night} />
+        </group>
+      ))}
+      {/* one warm light over the square stands in for all four lanterns */}
+      {night > 0.15 && <pointLight position={[0, 4, 0]} color="#ffb860" intensity={night * 40} distance={24} decay={1.6} />}
 
       {spot('g:forest', <ForestModel world={world} />, { ring: 4.6, labelY: 4.4, scale: 1.15 })}
       {spot('g:mine', <MineModel world={world} />, { ring: 4.6, labelY: 5.6, scale: 1.15 })}
@@ -238,9 +249,9 @@ function Scene({ world, onOpen, selected, questPlace, account, lowPower }: Props
       {spot('board', <BoardModel world={world} />, { ring: 2.4, labelY: 3.2 })}
       {spot('festival', <FestivalModel world={world} night={night} />, { ring: 3.6, labelY: 3.8 })}
 
-      {SHOPS.map(id => <Keeper key={id} id={id} />)}
+      {SHOPS.map(id => <Keeper key={id} id={id} spoke={!!world.agents?.[id] && Date.now() - world.agents[id].at < 20_000} />)}
       <Townsfolk count={lowPower ? 4 : 7} />
-      <Avatar target={selected} name={short(account)} />
+      <Avatar target={selected} name={short(account)} working={working} />
       <Smoke position={[...at('s:smith')].map((v, i) => (i === 1 ? 3.6 : v)) as [number, number, number]} color="#cfcac2" />
       <Smoke position={[...at('s:baker')].map((v, i) => (i === 1 ? 3.6 : v)) as [number, number, number]} />
       {(world.me?.cottage?.level ?? 1) >= 2 && <Smoke position={[...at('cottage')].map((v, i) => (i === 1 ? 3.2 : v)) as [number, number, number]} />}
@@ -262,6 +273,7 @@ function Scene({ world, onOpen, selected, questPlace, account, lowPower }: Props
 }
 
 interface Props {
+  working: boolean;
   world: World;
   onOpen: (p: Place) => void;
   selected: Place | null;
@@ -296,7 +308,7 @@ export function World3D(props: Props & { onFail: () => void }) {
           onPointerMissed={() => (document.body.style.cursor = '')}
         >
           <Suspense fallback={null}>
-            <Scene {...props} lowPower={lowPower} />
+            {new URLSearchParams(location.search).has('kit') ? <KitPreview /> : <Scene {...props} lowPower={lowPower} />}
           </Suspense>
         </Canvas>
       </div>

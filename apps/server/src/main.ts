@@ -300,7 +300,7 @@ setInterval(async () => {
 
 // ---------- static files (the built web client) ----------
 
-const TYPES: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2' };
+const TYPES: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.glb': 'model/gltf-binary', '.txt': 'text/plain' };
 
 function serveStatic(url: URL, res: ServerResponse) {
   let file = normalize(join(WEB_DIST, decodeURIComponent(url.pathname)));

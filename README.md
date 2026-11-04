@@ -109,4 +109,4 @@ To deploy your own: `PARENT=<you>.testnet WASM=<built wasm> ./scripts/deploy-tes
 
 ## License
 
-MIT
+Code: MIT. 3D models: CC0 by Kenney; see [CREDITS.md](CREDITS.md).

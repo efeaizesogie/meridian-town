@@ -1,11 +1,11 @@
 // Life on the island: you walking to where you clicked, townsfolk going about their day,
 // chimney smoke, drifting clouds, and fireflies after dark.
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html, Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
 import { at } from './layout';
-import { Person } from './models';
+import { CHARACTERS, Character, Scatter, nature, type Anim } from './kit';
 
 /** Stand a little in front of a place, toward the fountain. */
 function frontOf(place: string, dist = 4.6): THREE.Vector3 {
@@ -15,10 +15,31 @@ function frontOf(place: string, dist = 4.6): THREE.Vector3 {
   return len > 0.01 ? v.multiplyScalar((len - dist) / len) : v;
 }
 
-/** You: walks from wherever you were to the place you clicked. */
-export function Avatar({ target, name }: { target: string | null; name: string }) {
+/** Pick a character model from a name, so every player looks a little different. */
+function modelFor(name: string) {
+  const all = [...CHARACTERS.male, ...CHARACTERS.female];
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return all[h % all.length];
+}
+
+/** Track whether something is moving, re-rendering only when that changes. */
+function useMoving() {
+  const [moving, setMoving] = useState(false);
+  const last = useRef(false);
+  const set = (m: boolean) => {
+    if (m !== last.current) {
+      last.current = m;
+      setMoving(m);
+    }
+  };
+  return [moving, set] as const;
+}
+
+/** You: walk from wherever you were to the place you clicked; swing while gathering. */
+export function Avatar({ target, name, working }: { target: string | null; name: string; working: boolean }) {
   const ref = useRef<THREE.Group>(null);
-  const walking = useRef(false);
+  const [moving, setMoving] = useMoving();
   const goal = useMemo(() => (target ? frontOf(target) : new THREE.Vector3(0, 0, 3)), [target]);
   useFrame((_, dt) => {
     const g = ref.current;
@@ -26,37 +47,29 @@ export function Avatar({ target, name }: { target: string | null; name: string }
     const d = goal.clone().sub(g.position);
     d.y = 0;
     const dist = d.length();
-    walking.current = dist > 0.08;
-    if (walking.current) {
-      const step = Math.min(dist, dt * 7);
-      g.position.addScaledVector(d.normalize(), step);
+    setMoving(dist > 0.08);
+    if (dist > 0.08) {
+      g.position.addScaledVector(d.normalize(), Math.min(dist, dt * 7));
       g.rotation.y = THREE.MathUtils.damp(g.rotation.y, Math.atan2(d.x, d.z), 12, dt);
+    } else if (target) {
+      // Arrived: face the place.
+      const [px, , pz] = at(target);
+      g.rotation.y = THREE.MathUtils.damp(g.rotation.y, Math.atan2(px - g.position.x, pz - g.position.z), 8, dt);
     }
   });
+  const anim: Anim = moving ? 'sprint' : working ? 'interact-right' : 'idle';
   return (
-    <group ref={ref} position={[0, 0, 3]} scale={1.35}>
-      <WalkingPerson color="#2f5d7a" hat="#c9932f" walkingRef={walking} />
+    <group ref={ref} position={[0, 0, 3]}>
+      <group scale={2.4}>
+        <Character model={modelFor(name)} anim={anim} />
+      </group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
-        <ringGeometry args={[0.35, 0.45, 24]} />
+        <ringGeometry args={[0.55, 0.68, 28]} />
         <meshBasicMaterial color="#ffd36b" toneMapped={false} />
       </mesh>
-      <Html position={[0, 1.8, 0]} center style={{ pointerEvents: 'none' }}>
+      <Html position={[0, 2.4, 0]} center style={{ pointerEvents: 'none' }}>
         <div className="you3d">{name}</div>
       </Html>
-    </group>
-  );
-}
-
-function WalkingPerson({ color, hat, walkingRef }: { color: string; hat?: string; walkingRef: React.MutableRefObject<boolean> }) {
-  const inner = useRef<THREE.Group>(null);
-  useFrame(({ clock }) => {
-    if (!inner.current) return;
-    const t = clock.elapsedTime * 10;
-    inner.current.position.y = walkingRef.current ? Math.abs(Math.sin(t)) * 0.14 : 0;
-  });
-  return (
-    <group ref={inner}>
-      <Person color={color} hat={hat} />
     </group>
   );
 }
@@ -66,16 +79,15 @@ const ROUTES = ['s:lumberyard', 's:mine', 's:granary', 's:smith', 's:baker', 's:
 /** Townsfolk: wander from place to place, pausing at each. */
 export function Townsfolk({ count = 7 }: { count?: number }) {
   const folk = useMemo(() => Array.from({ length: count }, (_, i) => ({
-    color: ['#8e4a3a', '#4a6e8e', '#6e8e4a', '#8e7a4a', '#6a4a8e', '#4a8e7a', '#8e4a6e'][i % 7],
-    hat: i % 3 === 0 ? '#5a3a1a' : undefined,
+    model: [...CHARACTERS.female, ...CHARACTERS.male][(i * 5 + 1) % 12],
     seed: i * 7 + 3,
   })), [count]);
   return <>{folk.map((f, i) => <Wanderer key={i} {...f} />)}</>;
 }
 
-function Wanderer({ color, hat, seed }: { color: string; hat?: string; seed: number }) {
+function Wanderer({ model, seed }: { model: string; seed: number }) {
   const ref = useRef<THREE.Group>(null);
-  const walking = useRef(false);
+  const [moving, setMoving] = useMoving();
   const state = useRef({ leg: seed % ROUTES.length, wait: (seed % 5) * 0.8, from: frontOf(ROUTES[seed % ROUTES.length], 4) });
   useFrame((_, dt) => {
     const g = ref.current;
@@ -83,7 +95,7 @@ function Wanderer({ color, hat, seed }: { color: string; hat?: string; seed: num
     const s = state.current;
     if (s.wait > 0) {
       s.wait -= dt;
-      walking.current = false;
+      setMoving(false);
       return;
     }
     const goal = frontOf(ROUTES[s.leg], 3.8 + (seed % 3) * 0.5);
@@ -94,13 +106,13 @@ function Wanderer({ color, hat, seed }: { color: string; hat?: string; seed: num
       s.wait = 1.5 + ((seed * s.leg) % 5);
       return;
     }
-    walking.current = true;
+    setMoving(true);
     g.position.addScaledVector(d.normalize(), Math.min(dist, dt * 2.2));
     g.rotation.y = THREE.MathUtils.damp(g.rotation.y, Math.atan2(d.x, d.z), 8, dt);
   });
   return (
-    <group ref={ref} position={state.current.from.toArray() as [number, number, number]} scale={1.3}>
-      <WalkingPerson color={color} hat={hat} walkingRef={walking} />
+    <group ref={ref} position={state.current.from.toArray() as [number, number, number]} scale={2.2}>
+      <Character model={model} anim={moving ? 'walk' : 'idle'} />
     </group>
   );
 }
@@ -168,17 +180,24 @@ export function Fireflies({ night }: { night: number }) {
   );
 }
 
-/** Bushes, flowers and grass tufts scattered over the island, kept off paths and places. */
+/** Grass, flowers, bushes, mushrooms and rocks scattered over the island, off paths and places. */
 export function Decor() {
-  const items = useMemo(() => {
+  const groups = useMemo(() => {
     const keepClear = ['g:forest', 'g:mine', 'g:fields', 's:lumberyard', 's:mine', 's:granary', 's:smith', 's:baker', 's:store', 'guildhall', 'auction', 'caravan', 'cottage', 'board', 'festival']
       .map(p => at(p));
-    const out: { p: [number, number, number]; kind: 'tuft' | 'bush' | 'flower'; c: string; s: number }[] = [];
+    const kinds: [string, number, number][] = [
+      // model, weight, scale
+      ['grass_large', 22, 2.4], ['grass', 18, 2.6], ['grass_leafs', 10, 2.4], ['flower_redA', 6, 2.6], ['flower_yellowA', 6, 2.6],
+      ['flower_purpleA', 5, 2.6], ['flower_yellowC', 4, 2.6], ['plant_bush', 6, 2.2], ['plant_bushLarge', 4, 2], ['plant_bushDetailed', 4, 2.2],
+      ['mushroom_red', 2, 2.4], ['mushroom_tan', 2, 2.4], ['rock_smallA', 3, 2.4], ['rock_smallC', 3, 2.4], ['stone_largeA', 2, 2],
+    ];
+    const total = kinds.reduce((t, k) => t + k[1], 0);
+    const out: Record<string, { p: [number, number, number]; r: number; s: number }[]> = {};
     let seed = 7;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    for (let i = 0; out.length < 140 && i < 2000; i++) {
+    for (let i = 0, placed = 0; placed < 170 && i < 3000; i++) {
       const a = rnd() * Math.PI * 2;
-      const r = 6 + Math.sqrt(rnd()) * 23;
+      const r = 6 + Math.sqrt(rnd()) * 23.5;
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
       if (keepClear.some(([px, , pz]) => Math.hypot(px - x, pz - z) < 4.8)) continue;
       // Paths run from the fountain to each place: stay a little off those lines.
@@ -187,37 +206,16 @@ export function Decor() {
         const t = (x * px + z * pz) / (len * len);
         return t > 0 && t < 1 && Math.hypot(x - px * t, z - pz * t) < 1.4;
       })) continue;
-      const roll = rnd();
-      const kind = roll < 0.55 ? 'tuft' : roll < 0.8 ? 'flower' : 'bush';
-      const c = kind === 'flower' ? ['#f2c94c', '#eb5757', '#f2f2f2', '#bb6bd9'][Math.floor(rnd() * 4)] : kind === 'bush' ? '#4f8a3f' : '#6aa457';
-      out.push({ p: [x, 0, z], kind, c, s: 0.7 + rnd() * 0.6 });
+      let roll = rnd() * total;
+      const kind = kinds.find(k => (roll -= k[1]) < 0) ?? kinds[0];
+      (out[kind[0]] ??= []).push({ p: [x, 0, z], r: rnd() * Math.PI * 2, s: kind[2] * (0.8 + rnd() * 0.4) });
+      placed++;
     }
     return out;
   }, []);
   return (
     <group>
-      {items.map((d, i) => (
-        <group key={i} position={d.p} scale={d.s}>
-          {d.kind === 'tuft' && (
-            <mesh position={[0, 0.18, 0]} castShadow>
-              <coneGeometry args={[0.16, 0.42, 4]} />
-              <meshStandardMaterial color={d.c} flatShading />
-            </mesh>
-          )}
-          {d.kind === 'bush' && (
-            <mesh position={[0, 0.35, 0]} castShadow>
-              <icosahedronGeometry args={[0.55, 0]} />
-              <meshStandardMaterial color={d.c} flatShading />
-            </mesh>
-          )}
-          {d.kind === 'flower' && (
-            <>
-              <mesh position={[0, 0.15, 0]}><cylinderGeometry args={[0.02, 0.02, 0.3, 4]} /><meshStandardMaterial color="#4f8a3f" /></mesh>
-              <mesh position={[0, 0.32, 0]}><icosahedronGeometry args={[0.1, 0]} /><meshStandardMaterial color={d.c} flatShading /></mesh>
-            </>
-          )}
-        </group>
-      ))}
+      {Object.entries(groups).map(([src, items]) => <Scatter key={src} src={nature(src)} items={items} />)}
     </group>
   );
 }
