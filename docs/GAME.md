@@ -64,6 +64,27 @@ minutes if nothing happens). A quest chain with a pulsing marker on the map:
 Each step gives XP and unlocks the next hint; finishing the chain earns the title *Trader*
 and ends on the moment that matters most: your name in a bid for a piece of the town.
 
+## How it looks
+
+Meridian is a stylized low-poly island diorama, in the spirit of Townscaper and Islanders,
+built in three.js and modelled in code (no downloaded assets):
+
+- **The island lives on the market clock.** A low sun rises in front of the island and sets
+  behind it; golden hour throws long shadows across the square; at night the windows and
+  lanterns light up, stars come out and fireflies drift over the forest and fields.
+- **Places show the game's state.** The forest thins as it's cut, the mine's glowing ore
+  shrinks with its stock, the wheat grows back, contracts are pinned to the notice board,
+  wagons wait at the caravan gate during a round, the Festival banner rises with the week's
+  trading, and your cottage grows (and smokes) as you build it.
+- **People.** Each shopkeeper stands outside their shop; townsfolk wander between places; you
+  walk to wherever you click while the camera flies there.
+- **Finish.** Soft shadows, ambient occlusion, bloom on lit windows and forge fires, filmic
+  tone mapping and a vignette. A cinematic fly-in over the sea when you arrive.
+- **Sound.** Synthesized, no audio files: a slow pentatonic melody, birdsong by day,
+  crickets at night, and feedback sounds for actions. One mute button.
+- **Accessible fallback.** 🗺️ switches to the illustrated 2D map (also used automatically if
+  WebGL fails); phones get a lighter 3D mode.
+
 ## How it should feel
 
 - **The map is the menu.** The main screen is the town: grounds to the north, the market

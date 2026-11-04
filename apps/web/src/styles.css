@@ -162,6 +162,20 @@ input.small { padding: 4px 8px; width: 90px; font-family: var(--mono); }
 .meter.big span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: var(--ink); }
 .meter-fill.amber { background: var(--amber); }
 
+/* ---------- the 3D island ---------- */
+.world3d { width: 100%; height: calc(100vh - 86px); min-height: 420px; border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); background: #bfe0f2; }
+.label3d { display: flex; flex-direction: column; align-items: center; gap: 2px; transform: translateY(-4px); white-space: nowrap; user-select: none; }
+.label3d span { font: 700 13px var(--serif); color: #2b2118; background: rgba(255, 250, 240, 0.86); padding: 2px 9px; border-radius: 99px; box-shadow: 0 2px 6px rgba(40, 25, 5, 0.25); }
+.label3d b { font: 600 11px var(--mono); color: #2b2118; background: #fffaf0; border: 1.5px solid #6b4f2a; padding: 1px 7px; border-radius: 6px; }
+.label3d b.hot { background: #fbe2c4; border-color: #b5532a; color: #8a2f12; }
+.label3d.on span { background: #fff4d6; outline: 2px solid #b7862b; }
+.quest3d { width: 28px; height: 28px; border-radius: 50%; background: #ffc94d; color: #5a3a00; font: 900 22px var(--serif); display: grid; place-items: center; box-shadow: 0 0 0 4px rgba(255, 201, 77, 0.35), 0 4px 10px rgba(0, 0, 0, 0.3); animation: bob 1.2s ease-in-out infinite; }
+.you3d { font: 700 12px var(--sans); color: #fff; background: #2f5d7a; padding: 2px 8px; border-radius: 99px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); }
+.bubble3d { width: 210px; font: 13px/1.35 var(--serif); color: #2b2118; background: #fffaf0; border: 1.5px solid #6b4f2a; border-radius: 14px; padding: 8px 12px; box-shadow: 0 6px 16px rgba(40, 25, 5, 0.3); position: relative; animation: toastin 0.3s ease-out; }
+.bubble3d::after { content: ''; position: absolute; left: 50%; bottom: -9px; width: 14px; height: 14px; background: #fffaf0; border-right: 1.5px solid #6b4f2a; border-bottom: 1.5px solid #6b4f2a; transform: translateX(-50%) rotate(45deg); }
+.bubble3d b { text-transform: capitalize; }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
 /* ---------- stage: map + drawer ---------- */
 .game { min-height: 100vh; display: flex; flex-direction: column; }
 .stage { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; gap: 0; position: relative; align-content: start; }
@@ -256,6 +270,7 @@ input.small { padding: 4px 8px; width: 90px; font-family: var(--mono); }
 .leaders tr.me td { background: var(--amber-bg); }
 
 @media (prefers-reduced-motion: reduce) {
+  .quest3d, .bubble3d { animation: none; }
   .town .quest-ring, .town .wagon, .town .smoke, .town .fountain, .swing.swinging .swing-icon { animation: none; }
   .floater { animation-duration: 1.2s; }
   .drawer, .toast { animation: none; }

@@ -41,7 +41,9 @@ const mmss = (ms: number) => {
   return h ? `${h}h ${m}m` : `${m}:${String(s % 60).padStart(2, '0')}`;
 };
 
-export function Hud({ world, account, purseRef, onSignOut, onGuide, onLeaders, onFestival }: {
+export function Hud({ world, account, purseRef, onSignOut, onGuide, onLeaders, onFestival, gfx, onGfx }: {
+  gfx: '3d' | '2d';
+  onGfx: () => void;
   world: World;
   account: string;
   purseRef: React.RefObject<HTMLDivElement | null>;
@@ -104,6 +106,7 @@ export function Hud({ world, account, purseRef, onSignOut, onGuide, onLeaders, o
       <nav className="hud-menu" aria-label="Game menu">
         <button onClick={onGuide} title="How to play">📖</button>
         <button onClick={onLeaders} title="Leaderboard">🏆</button>
+        <button onClick={onGfx} title={gfx === '3d' ? 'Switch to the 2D map (lighter on old devices)' : 'Switch to the 3D island'}>{gfx === '3d' ? '🗺️' : '🏝️'}</button>
         <button onClick={() => { setMuted(!muted); setM(!muted); }} title={muted ? 'Sound off' : 'Sound on'} aria-pressed={!muted}>{muted ? '🔇' : '🔊'}</button>
         <button onClick={onSignOut} title="Forget this browser's key">⏏</button>
       </nav>

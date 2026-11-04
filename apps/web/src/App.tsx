@@ -9,7 +9,16 @@ import { PlaceDrawer, type Actions } from './Places';
 import { TownLog } from './Panels';
 import { FastForward } from './FastForward';
 import { Guide, Leaders } from './Guide';
-import { play, reducedMotion } from './juice';
+import { play, reducedMotion, startAmbience } from './juice';
+import { World3D } from './world/World3D';
+
+const savedGfx = (): '3d' | '2d' => {
+  try {
+    return localStorage.getItem('meridian.gfx') === '2d' ? '2d' : '3d';
+  } catch {
+    return '3d';
+  }
+};
 
 export interface World {
   town: TownView;
@@ -75,6 +84,15 @@ export default function App() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextId = useRef(1);
   const purseRef = useRef<HTMLDivElement | null>(null);
+  const worldRef = useRef<World | null>(null);
+  worldRef.current = world;
+  const [gfx, setGfx] = useState<'3d' | '2d'>(savedGfx);
+  const switchGfx = (g: '3d' | '2d') => {
+    setGfx(g);
+    try {
+      localStorage.setItem('meridian.gfx', g);
+    } catch {}
+  };
 
   useEffect(() => {
     loadConfig().then(c => {
@@ -100,9 +118,25 @@ export default function App() {
     });
   }, []);
 
+  // Ambience starts with the first click (browsers only allow sound after a gesture).
+  useEffect(() => {
+    const begin = () => {
+      startAmbience(() => {
+        const w = worldRef.current;
+        if (!w) return 0;
+        const { genesisMs, dayMs, skewMs } = w.clock;
+        const into = (((Date.now() - skewMs - genesisMs) % dayMs) + dayMs) % dayMs / dayMs;
+        return into < 0.7 ? 0 : into < 0.85 ? (into - 0.7) / 0.15 : 1;
+      });
+      play('swing'); // wakes the audio context on this gesture; quiet thunk as a welcome
+    };
+    window.addEventListener('pointerdown', begin, { once: true });
+    return () => window.removeEventListener('pointerdown', begin);
+  }, []);
+
   useEffect(() => {
     if (!config) return;
-    refresh();
+    refresh().catch(() => {}); // the server may still be reading the town; the next poll retries
     const t = setInterval(() => refresh().catch(() => {}), 3000);
     return () => clearInterval(t);
   }, [config, account, refresh]);
@@ -113,7 +147,10 @@ export default function App() {
   const float = (at: Place | null, text: string, kind: Floater['kind']) => {
     const spot = at ? SPOTS[at] : null;
     const id = nextId.current++;
-    setFloaters(f => [...f, { id, x: spot ? spot.x : W - 60, y: spot ? spot.y - 30 : 20, text, kind }]);
+    // On the 3D island gains rise from the middle of the view; on the 2D map, from the place.
+    const x = gfx === '3d' ? W / 2 + ((id % 5) - 2) * 40 : spot ? spot.x : W - 60;
+    const y = gfx === '3d' ? H * 0.42 : spot ? spot.y - 30 : 20;
+    setFloaters(f => [...f, { id, x, y, text, kind }]);
     setTimeout(() => setFloaters(f => f.filter(x => x.id !== id)), reducedMotion() ? 1200 : 1600);
   };
 
@@ -258,10 +295,13 @@ export default function App() {
     <div className="game">
       <Hud world={world} account={account} purseRef={purseRef}
         onSignOut={() => { signOut(); setAccount(null); }}
-        onGuide={() => setModal('guide')} onLeaders={() => setModal('leaders')} onFestival={() => open('festival')} />
+        onGuide={() => setModal('guide')} onLeaders={() => setModal('leaders')} onFestival={() => open('festival')}
+        gfx={gfx} onGfx={() => switchGfx(gfx === '3d' ? '2d' : '3d')} />
       <main className={`stage ${place ? 'with-drawer' : ''}`}>
         <div className="map-wrap">
-          <TownMap world={world} onOpen={open} selected={place} questPlace={qp} here={here} />
+          {gfx === '3d'
+            ? <World3D world={world} onOpen={open} selected={place} questPlace={qp} account={account} onFail={() => switchGfx('2d')} />
+            : <TownMap world={world} onOpen={open} selected={place} questPlace={qp} here={here} />}
           <div className="floaters" aria-hidden>
             {floaters.map(f => (
               <span key={f.id} className={`floater ${f.kind}`} style={{ left: `${(f.x / W) * 100}%`, top: `${(f.y / H) * 100}%` }}>{f.text}</span>

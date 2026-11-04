@@ -33,8 +33,9 @@ node --env-file-if-exists=.env apps/server/src/main.ts   # http://localhost:8787
 ```
 
 Pick a name and you're in: the server creates `<name>.game.efecode.testnet` with a key that
-lives in your browser and can only call the town contract. The town map is the main screen:
-click a place to go there. A quest scroll walks you through the first session (gather →
+lives in your browser and can only call the town contract. The town is a 3D island that
+follows the market clock (add `?time=day`, `dusk` or `night` to preview); click a place and
+the camera flies there. 🗺️ switches to a 2D map. A quest scroll walks you through the first session (gather →
 sell to the best buyer → eat → deliver a contract → build your cottage → join a guild →
 bid for a deed), with XP, levels and titles for work verified on chain. See
 [docs/HOW-TO-PLAY.md](docs/HOW-TO-PLAY.md).
