@@ -309,10 +309,13 @@ setInterval(async () => {
 
 // ---------- static files (the built web client) ----------
 
-const TYPES: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.glb': 'model/gltf-binary', '.txt': 'text/plain' };
+const TYPES: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.woff2': 'font/woff2', '.glb': 'model/gltf-binary', '.txt': 'text/plain' };
 
+// Visitors land on the welcome page at `/`; the game itself lives at `/play`. Every other
+// path is a file from the build, or falls back to the game.
 function serveStatic(url: URL, res: ServerResponse) {
-  let file = normalize(join(WEB_DIST, decodeURIComponent(url.pathname)));
+  const path = url.pathname === '/' ? '/welcome/index.html' : url.pathname.replace(/\/+$/, '') === '/play' ? '/index.html' : url.pathname;
+  let file = normalize(join(WEB_DIST, decodeURIComponent(path)));
   if (!file.startsWith(normalize(WEB_DIST)) || !existsSync(file) || statSync(file).isDirectory()) file = join(WEB_DIST, 'index.html');
   if (!existsSync(file)) {
     res.writeHead(404).end('web client not built: run `npm run build -w apps/web`, or use `npm run web` in development');
