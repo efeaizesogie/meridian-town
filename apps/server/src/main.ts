@@ -6,7 +6,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PublicKey } from 'near-api-js';
-import { GAME, NETWORK, RPCS, TOWN, accountExists, advanceTown, createPlayer, gatherBatch, hasKey, verifyTownCall, verifyUseItem, view, type GatherOrder } from './chain.ts';
+import { GAME, NETWORK, RPCS, TOWN, accountExists, advanceTown, createPlayer, gatherBatch, hasKey, verifyTownCall, verifyUseItem, view, viewOn, type GatherOrder } from './chain.ts';
 import * as players from './players.ts';
 import * as prog from './progression.ts';
 import { PERSONAS, agentAccount, getReports, startAgents } from './agents.ts';
@@ -43,6 +43,28 @@ async function readLeaders() {
 }
 setInterval(() => readLeaders().catch(e => console.error('leaders', e instanceof Error ? e.message : e)), 60_000).unref();
 setTimeout(() => readLeaders().catch(() => {}), 8_000).unref();
+
+// ---------- the market: MERI's price in the MERI/wNEAR pool on Rhea ----------
+// apps/server/rhea-pool.json is written by scripts/rhea-pool.ts; RHEA_POOL overrides it on a host.
+const RHEA: { exchange: string; poolId: number; meri: string; wnear: string } | null = (() => {
+  try {
+    return JSON.parse(process.env.RHEA_POOL ?? readFileSync(fileURLToPath(new URL('../rhea-pool.json', import.meta.url)), 'utf8'));
+  } catch {
+    return null;
+  }
+})();
+let market: { exchange: string; poolId: number; nearPerMeri: number; meriInPool: number; nearInPool: number; readAt: number } | null = null;
+async function readMarket() {
+  if (!RHEA) return;
+  const pool = await viewOn<{ token_account_ids: string[]; amounts: string[] }>(RHEA.exchange, 'get_pool', { pool_id: RHEA.poolId });
+  const meriAt = pool.token_account_ids.indexOf(RHEA.meri);
+  const nearAt = pool.token_account_ids.indexOf(RHEA.wnear);
+  const meriInPool = Number(pool.amounts[meriAt]) / 1e6;
+  const nearInPool = Number(BigInt(pool.amounts[nearAt]) / 10n ** 18n) / 1e6;
+  market = { exchange: RHEA.exchange, poolId: RHEA.poolId, nearPerMeri: meriInPool ? nearInPool / meriInPool : 0, meriInPool, nearInPool, readAt: Date.now() };
+}
+setInterval(() => readMarket().catch(e => console.error('market', e instanceof Error ? e.message : e)), 60_000).unref();
+setTimeout(() => readMarket().catch(() => {}), 3_000).unref();
 
 let lastSlowRead = 0;
 let guildViews: GuildView[] = [];
@@ -175,7 +197,7 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
 
   if (req.method === 'GET' && url.pathname === '/api/world') {
     if (!world) throw new HttpError(503, 'reading the town, try again in a moment');
-    return { ...world, agents: getReports(), suppliers: getSupplierBids(), guildViews };
+    return { ...world, agents: getReports(), suppliers: getSupplierBids(), guildViews, market };
   }
 
   if (req.method === 'GET' && url.pathname === '/api/player') {

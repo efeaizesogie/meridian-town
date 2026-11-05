@@ -123,6 +123,7 @@ export function Earnings({ world, account, network, onClose }: { world: World; a
   ];
   const total = earned.reduce((a, e) => a + e.v, 0);
   const worth = coins + goodsValue + claimable;
+  const m = world.market;
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="earnings-title" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="book ledger">
@@ -131,7 +132,7 @@ export function Earnings({ world, account, network, onClose }: { world: World; a
           <button className="link" onClick={onClose} aria-label="Close ledger"><Icon name="close" /></button>
         </header>
         <div className="ledger-top">
-          <div><span className="muted">You own, valued now</span><strong className="big-figure"><Icon name="coin" size={30} /> {worth.toFixed(2)}</strong><span className="muted">MERI</span></div>
+          <div><span className="muted">You own, valued now</span><strong className="big-figure"><Icon name="coin" size={30} /> {worth.toFixed(2)}</strong><span className="muted">MERI{m ? `, about ${(worth * m.nearPerMeri).toFixed(3)} NEAR on Rhea` : ''}</span></div>
           <div><span className="muted">Earned so far</span><strong className="big-figure">{total.toFixed(0)}</strong><span className="muted">MERI, from play</span></div>
         </div>
         <table className="ledger-table">
@@ -149,6 +150,12 @@ export function Earnings({ world, account, network, onClose }: { world: World; a
             {owned.map(s => <tr key={s.shop.id}><td className="with-icon"><Icon name="house" /> Deed to {s.shop.name}</td><td className="num">1</td><td className="num">its till: {fmt(s.cash, 0)}</td></tr>)}
           </tbody>
         </table>
+        {m && (
+          <p className="market-line">
+            <strong>1 MERI ≈ {m.nearPerMeri.toFixed(4)} NEAR</strong> in the MERI/wNEAR pool on Rhea (pool {m.poolId}, holding {m.meriInPool.toFixed(0)} MERI and {m.nearInPool.toFixed(2)} wNEAR).{' '}
+            <a href={`${network === 'mainnet' ? EXPLORER.mainnet : EXPLORER.testnet}/address/${m.exchange}`} target="_blank" rel="noreferrer">See the exchange</a>
+          </p>
+        )}
         <p className="hint">Everything here sits on chain under <strong>{account}</strong>, which your recovery words own. On NEAR mainnet MERI and shop deeds are tradable tokens, so what you earn here is yours to keep, sell or move to any NEAR wallet. Today the game runs on testnet, where coins have no cash value. <a href={`${network === 'mainnet' ? EXPLORER.mainnet : EXPLORER.testnet}/address/${account}`} target="_blank" rel="noreferrer">Check it on the explorer</a></p>
       </div>
     </div>

@@ -462,3 +462,6 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
 @media (max-width: 40rem) { .phrase { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ledger-top { grid-template-columns: minmax(0, 1fr); } }
 
 .gate label.check, .book label.check { display: flex; margin: 0; }
+
+.market-line { margin: 0; padding: 12px 16px; border-radius: 14px; background: var(--grain), var(--color-mint); font-size: 14px; }
+.market-line a { color: var(--ink); font-weight: 600; }

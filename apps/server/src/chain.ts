@@ -60,7 +60,12 @@ export async function rpc(method: string, params: unknown): Promise<any> {
 }
 
 export async function view<T>(method: string, args: object = {}): Promise<T> {
-  const body = await rpc('query', { request_type: 'call_function', finality: 'optimistic', account_id: TOWN, method_name: method, args_base64: Buffer.from(JSON.stringify(args)).toString('base64') });
+  return viewOn<T>(TOWN, method, args);
+}
+
+/** A view call on any contract (Rhea's exchange, a guild DAO…). */
+export async function viewOn<T>(contract: string, method: string, args: object = {}): Promise<T> {
+  const body = await rpc('query', { request_type: 'call_function', finality: 'optimistic', account_id: contract, method_name: method, args_base64: Buffer.from(JSON.stringify(args)).toString('base64') });
   if (body.error || body.result?.error) throw new Error(JSON.stringify(body.error ?? body.result.error));
   return JSON.parse(Buffer.from(body.result.result).toString());
 }

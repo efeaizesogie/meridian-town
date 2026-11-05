@@ -41,7 +41,8 @@ const key = JSON.parse(readFileSync(join(homedir(), '.near-credentials', 'testne
 const provider = new FailoverRpcProvider(RPCS.map(url => new JsonRpcProvider({ url })));
 const account = new Account(owner, provider, key);
 
-for (const g of GUILDS) {
+// GUILD=<name> charters just that one (each needs ~6 NEAR of storage).
+for (const g of GUILDS.filter(x => !process.env.GUILD || x.name === process.env.GUILD)) {
   const dao = `${g.name}.${FACTORY}`;
   const exists = await provider.viewAccount({ accountId: dao }).then(() => true, () => false);
   if (!exists) {

@@ -36,6 +36,8 @@ export interface World {
   guildViews: GuildView[];
   player?: Player;
   me?: Me;
+  /** MERI's price in the MERI/wNEAR pool on Rhea, read by the server. */
+  market?: { exchange: string; poolId: number; nearPerMeri: number; meriInPool: number; nearInPool: number } | null;
 }
 
 export interface LogLine {

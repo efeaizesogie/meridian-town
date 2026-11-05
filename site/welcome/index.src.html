@@ -133,7 +133,7 @@ mark { background: var(--mark); color: inherit; box-decoration-break: clone; -we
 @media (max-width: 40rem) { .earn-grid { grid-template-columns: minmax(0, 1fr); } .earn-grid li { min-height: 0; } }
 
 /* ---------- what it takes: Rows ---------- */
-.needs { border-top: var(--rule-hair) solid var(--color-rule); }
+.needs, .built { border-top: var(--rule-hair) solid var(--color-rule); }
 .rows { margin: 0; display: grid; }
 .rows div { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: var(--space-lg); padding-block: var(--space-xl); border-bottom: var(--rule-hair) solid var(--color-rule); }
 .rows dt { font-size: var(--text-title); font-weight: 600; letter-spacing: -0.01em; }
@@ -277,6 +277,21 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
         </div>
         <p class="keep-note">This is the opening season on NEAR testnet, where coins are for practice. When Meridian moves to mainnet, MERI and deeds become tradable tokens. Earnings depend on how the town trades, so we make no promises about amounts.</p>
       </div>
+    </div>
+  </section>
+
+  <section class="built" aria-labelledby="built-title">
+    <div class="container split split--4-8" style="align-items:start">
+      <div class="text-col">
+        <h2 id="built-title">Built on NEAR.</h2>
+        <p class="lead">Every coin, shop and vote is on chain, and you can check each one.</p>
+      </div>
+      <dl class="rows">
+        <div><dt>NEAR AI</dt><dd>The six shopkeepers think with NEAR AI Cloud. You read their reasoning in every shop.</dd></div>
+        <div><dt>SputnikDAO</dt><dd>The Hammer and Harvest guilds are Sputnik DAOs. Members pool coin, propose and vote.</dd></div>
+        <div><dt>Rhea</dt><dd>A MERI/wNEAR pool on Rhea sets MERI’s price, and your ledger shows your holdings in NEAR.</dd></div>
+        <div><dt>Your own account</dt><dd>Coins, goods and deeds are NEAR tokens in an account your 12 words own.</dd></div>
+      </dl>
     </div>
   </section>
 

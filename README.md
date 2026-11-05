@@ -6,6 +6,11 @@ mints or burns each week depending on whether the town kept trading.
 
 Built for NEAR HACKATHON (Nov 2026). Tracks: Games, NFTs, Memecoins, Social Money, AI Swarms.
 
+**Play it now:** https://meridian-town-production.up.railway.app (no wallet needed; you get 12
+recovery words that make the account yours). Built with NEAR AI, SputnikDAO and Rhea; see
+[docs/PARTNERS.md](docs/PARTNERS.md). How players earn, and where that money comes from:
+[docs/ECONOMY.md](docs/ECONOMY.md).
+
 > Status: the game design, economy rules, simulator and core contract are done and
 > deployed to testnet (coin, goods, shops, trading, gathering, delivery contracts,
 > Festival, deeds), the game is playable in the browser, and six merchant agents run the
@@ -83,7 +88,9 @@ Development with hot reload: `npm run server` and `npm run web` (Vite on :5173).
 ## Live on testnet
 
 The town runs at [`town.efecode.testnet`](https://testnet.nearblocks.io/address/town.efecode.testnet)
-with 15-minute market days (a Festival every 105 minutes).
+with 15-minute market days (a Festival every 105 minutes). Guilds:
+`hammer-guild.sputnikv2.testnet` and `harvest-guild.sputnikv2.testnet`. MERI/wNEAR: pool 2901
+on Rhea's `ref-finance-101.testnet`.
 
 ```bash
 node scripts/town.ts                    # day, Festival progress, grounds, every shop's prices
@@ -93,12 +100,17 @@ To deploy your own: `PARENT=<you>.testnet WASM=<built wasm> ./scripts/deploy-tes
 
 ## Docs
 
-- [docs/HOW-TO-PLAY.md](docs/HOW-TO-PLAY.md): the player's guide (also in the game, under 📖).
+- [docs/HOW-TO-PLAY.md](docs/HOW-TO-PLAY.md): the player's guide (also in the game, under the book button).
 - [docs/GAME.md](docs/GAME.md): the game design: fantasy, loops, progression, first session, feel.
 - [docs/DESIGN.md](docs/DESIGN.md): the game loop (every 30 seconds, 5 minutes and
   session) and what lives on chain.
 - [docs/RULES.md](docs/RULES.md): every price, upkeep, contract, caravan and Festival
   rule, with simulation results and open issues.
+- [docs/ECONOMY.md](docs/ECONOMY.md): play, earn, own: how players earn, where the money
+  comes from, what stops abuse, and what mainnet needs.
+- [docs/PARTNERS.md](docs/PARTNERS.md): NEAR and ecosystem partners used today (NEAR AI,
+  SputnikDAO, Rhea) with contract ids, and the mainnet plan for the rest.
+- [docs/DEPLOY.md](docs/DEPLOY.md): hosting the demo.
 
 ## Layout
 
