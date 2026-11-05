@@ -132,6 +132,27 @@ async function flush() {
 
 // ---------- routes ----------
 
+/**
+ * What a player should read when the chain says no. near-api-js wraps the real cause (an empty
+ * balance, a busy RPC) inside "Exceeded 5 providers"; unwrap it and say what it means.
+ */
+function plainError(e: unknown): { status: number; message: string } {
+  const all = [e, ...((e as any)?.errors ?? [])];
+  const text = all.map(x => (x instanceof Error ? `${x.name} ${x.message}` : String(x))).join(' | ');
+  const signer = all.map(x => (x as any)?.signerId).find(Boolean);
+  if (/NotEnoughBalance|LackBalanceForState|not enough balance/i.test(text)) {
+    if (!signer || signer === GAME) {
+      console.error(`LOW FUNDS: ${GAME} cannot pay for transactions. Top it up with testnet NEAR.`);
+      return { status: 503, message: 'The town’s treasury for new players is empty right now, so it can’t open new stalls. The keeper has been told; please try again in a little while.' };
+    }
+    return { status: 402, message: 'Your account is out of NEAR for transaction fees. Ask in the town square, or try again after the next top-up.' };
+  }
+  if (/Exceeded \d+ providers|RetriesExceeded|ECONNRESET|ETIMEDOUT|fetch failed|429|Too Many Requests|timeout/i.test(text)) {
+    return { status: 503, message: 'The NEAR network is busy right now. Wait a few seconds and try again; nothing was lost.' };
+  }
+  return { status: 500, message: 'Something went wrong on our side. Try again in a moment; your coins and goods are safe on chain.' };
+}
+
 class HttpError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -334,9 +355,13 @@ createServer(async (req, res) => {
     const out = await route(req, url, body);
     res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(out));
   } catch (e) {
-    const status = e instanceof HttpError ? e.status : 500;
-    if (status === 500) console.error(e);
-    res.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }));
+    if (e instanceof HttpError) {
+      res.writeHead(e.status, { 'content-type': 'application/json' }).end(JSON.stringify({ error: e.message }));
+      return;
+    }
+    console.error(e);
+    const { status, message } = plainError(e);
+    res.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify({ error: message }));
   }
 }).listen(PORT, () => {
   startAgents(() => world);

@@ -95,13 +95,17 @@ export async function restoreWithPhrase(name: string, phrase: string): Promise<s
   const play = KeyPair.fromRandom('ed25519');
   const guildKeys = Object.fromEntries(config.guilds.map(g => [g, KeyPair.fromRandom('ed25519')]));
   const ownerAccount = new Account(accountId, provider, owner.secretKey as any);
-  await ownerAccount.signAndSendTransaction({
-    receiverId: accountId,
-    actions: [
-      actions.addFunctionCallAccessKey(PublicKey.fromString(play.getPublicKey().toString()), config.town, [], nearToYocto('1')),
-      ...Object.entries(guildKeys).map(([g, k]) => actions.addFunctionCallAccessKey(PublicKey.fromString(k.getPublicKey().toString()), g, GUILD_METHODS, nearToYocto('1'))),
-    ],
-  });
+  try {
+    await ownerAccount.signAndSendTransaction({
+      receiverId: accountId,
+      actions: [
+        actions.addFunctionCallAccessKey(PublicKey.fromString(play.getPublicKey().toString()), config.town, [], nearToYocto('1')),
+        ...Object.entries(guildKeys).map(([g, k]) => actions.addFunctionCallAccessKey(PublicKey.fromString(k.getPublicKey().toString()), g, GUILD_METHODS, nearToYocto('1'))),
+      ],
+    });
+  } catch (e) {
+    throw new Error(readablePanic(e));
+  }
   save({ accountId, secretKey: play.toString(), guildKeys: Object.fromEntries(Object.entries(guildKeys).map(([g, k]) => [g, k.toString()])), phrase: normalise(phrase) });
   return accountId;
 }
@@ -133,7 +137,7 @@ export async function join(name: string): Promise<string> {
   const phrase = newPhrase();
   const owner = keyFromPhrase(phrase);
   const guildKeys = Object.fromEntries(config.guilds.map(g => [g, KeyPair.fromRandom('ed25519')]));
-  const res = await fetch('/api/join', {
+  const res = await reach('/api/join', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -143,7 +147,7 @@ export async function join(name: string): Promise<string> {
       guildKeys: Object.fromEntries(Object.entries(guildKeys).map(([g, k]) => [g, k.getPublicKey().toString()])),
     }),
   });
-  const out = await res.json();
+  const out = await res.json().catch(() => ({ error: 'The town is restarting. Try again in a minute.' }));
   if (!res.ok) throw new Error(out.error);
   save({ accountId: out.accountId, secretKey: key.toString(), guildKeys: Object.fromEntries(Object.entries(guildKeys).map(([g, k]) => [g, k.toString()])), phrase });
   return out.accountId;
@@ -159,8 +163,8 @@ export async function api<T>(path: string, body: object = {}): Promise<T> {
   const key = KeyPair.fromString(session.secretKey as any);
   const signature = key.sign(new TextEncoder().encode(`meridian|${session.accountId}|${ts}|${text}`)).signature;
   const auth = b64(new TextEncoder().encode(JSON.stringify({ accountId: session.accountId, publicKey: key.getPublicKey().toString(), ts, signature: b64(signature) })));
-  const res = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-meridian-auth': auth }, body: text });
-  const out = await res.json();
+  const res = await reach(path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-meridian-auth': auth }, body: text });
+  const out = await res.json().catch(() => ({ error: 'The town is restarting. Try again in a minute.' }));
   if (!res.ok) throw new Error(out.error);
   return out;
 }
@@ -194,8 +198,8 @@ export async function view<T>(method: string, args: object = {}): Promise<T> {
 
 /** Shared town snapshot and this player's balances, read by the game server. */
 export async function getJSON<T>(path: string): Promise<T> {
-  const res = await fetch(path);
-  const out = await res.json();
+  const res = await reach(path);
+  const out = await res.json().catch(() => ({ error: 'The town is restarting. Try again in a minute.' }));
   if (!res.ok) throw new Error(out.error);
   return out;
 }
@@ -230,7 +234,21 @@ export async function call<T = unknown>(methodName: string, args: object, tgas =
 }
 
 function readablePanic(e: unknown): string {
-  const text = e instanceof Error ? e.message : JSON.stringify(e);
+  const text = e instanceof Error ? `${e.name} ${e.message} ${JSON.stringify((e as any).errors?.map((x: any) => x?.message) ?? [])}` : JSON.stringify(e);
+  if (/NotEnoughBalance|not enough balance|LackBalance/i.test(text)) return 'Your account is out of NEAR for transaction fees, so the town can’t take this action yet.';
+  if (/Exceeded \d+ providers|RetriesExceeded|Failed to fetch|NetworkError|429|timeout/i.test(text)) return 'The NEAR network is busy right now. Wait a few seconds and try again; nothing was lost.';
+  if (/InvalidNonce|nonce/i.test(text)) return 'That clashed with another action from you. Try it once more.';
   const m = text.match(/Smart contract panicked: ([^"\\]+)/) ?? text.match(/panicked at [^:]+:\d+:\d+:\s*([^"\\]+)/);
-  return m ? m[1].trim() : text.slice(0, 160);
+  if (m) return m[1].trim();
+  console.error(e);
+  return 'That didn’t go through. Try again in a moment; nothing was lost.';
+}
+
+/** fetch, but a dropped connection reads as a sentence a player understands. */
+async function reach(path: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(path, init);
+  } catch {
+    throw new Error('Can’t reach the town right now. Check your connection and try again.');
+  }
 }

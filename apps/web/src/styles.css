@@ -460,3 +460,5 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
 .ledger-table .num { text-align: right; }
 .ledger-table td.with-icon { display: flex; text-transform: capitalize; }
 @media (max-width: 40rem) { .phrase { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ledger-top { grid-template-columns: minmax(0, 1fr); } }
+
+.gate label.check, .book label.check { display: flex; margin: 0; }

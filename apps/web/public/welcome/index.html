@@ -191,6 +191,19 @@ mark { background: var(--mark); color: inherit; box-decoration-break: clone; -we
 .play-grid { align-items: start; }
 @media (max-width: 60rem) { .pin { position: static; } }
 
+/* ---------- play, earn, own: a Grid of card stock, then the keep sheet ---------- */
+.earn-head { display: grid; gap: var(--space-md); margin-bottom: var(--space-2xl); }
+.earn-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap-columns); }
+.earn-grid li { display: grid; gap: var(--space-sm); align-content: start; min-height: 240px; padding: var(--space-xl) var(--space-lg); border-radius: var(--radius-card); background: var(--grain), var(--fibre), var(--color-card); box-shadow: inset 0 0 0 1px var(--color-rule), 0 6px 0 0 var(--color-edge); }
+.earn-grid li:nth-child(3) { background: var(--grain), var(--fibre), var(--color-accent); box-shadow: 0 6px 0 0 var(--color-accent-deep); }
+.earn-grid p { color: var(--color-ink-2); }
+.keep { margin-top: var(--space-2xl); display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--space-xl); align-items: center; padding: var(--space-xl); border-radius: var(--radius-card); background: var(--grain), var(--fibre), var(--color-mint); }
+.keep-text { display: grid; gap: var(--space-sm); }
+.keep-text p { color: var(--color-ink-2); }
+.keep-note { font-size: var(--text-sm); color: var(--color-ink-2); }
+@media (max-width: 60rem) { .earn-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .keep { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 40rem) { .earn-grid { grid-template-columns: minmax(0, 1fr); } .earn-grid li { min-height: 0; } }
+
 /* ---------- what it takes: Rows ---------- */
 .needs { border-top: var(--rule-hair) solid var(--color-rule); }
 .rows { margin: 0; display: grid; }
@@ -222,6 +235,7 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
         <a href="#hours">The island</a>
         <a href="#shopkeepers">Shopkeepers</a>
         <a href="#play">How to play</a>
+        <a href="#earn">Earn</a>
       </nav>
       <a class="btn btn--primary btn--small" href="/play">Play free</a>
     </div>
@@ -313,6 +327,28 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
         <div class="frame sheet"><img src="/welcome/img/ui-prices.jpg" alt="The game at dusk with its interface: the quest scroll, the Festival meter and a price tag over every shop." width="800" height="500" loading="lazy"></div>
         <figcaption style="margin-top:var(--space-sm)">Your first quest, the Festival meter, and every shop’s price, all on one screen.</figcaption>
       </figure>
+    </div>
+  </section>
+
+  <section id="earn" class="earn" aria-labelledby="earn-title">
+    <div class="container">
+      <div class="earn-head">
+        <h2 id="earn-title">Play, earn, own.</h2>
+        <p class="lead">What you make in Meridian lands in your own NEAR account, and 12 recovery words make it yours.</p>
+      </div>
+      <ul class="earn-grid">
+        <li><h3>Sell your harvest</h3><p>Shops pay most for what they lack. Read the board and sell where it pays.</p></li>
+        <li><h3>Run deliveries</h3><p>Short shops post contracts with the coin held up front. Deliver and get paid.</p></li>
+        <li><h3>Own a shop</h3><p>Win a failing shop at auction and take half its daily profit as dividends.</p></li>
+        <li><h3>Share the Festival</h3><p>When the town hits its weekly target, new coin goes to everyone who traded.</p></li>
+      </ul>
+      <div class="keep sheet">
+        <div class="keep-text">
+          <h3>Yours to keep, sell or move</h3>
+          <p>Coins are MERI tokens and shops are NFT deeds, held under your name. Your recovery words open the account in any NEAR wallet, and every coin and deed in it is yours.</p>
+        </div>
+        <p class="keep-note">This is the opening season on NEAR testnet, where coins are for practice. When Meridian moves to mainnet, MERI and deeds become tradable tokens. Earnings depend on how the town trades, so we make no promises about amounts.</p>
+      </div>
     </div>
   </section>
 
