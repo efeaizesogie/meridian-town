@@ -1,0 +1,9 @@
+node_modules
+**/node_modules
+contracts/target
+apps/server/data
+apps/web/dist
+sim/out
+.git
+.env
+deploy.env

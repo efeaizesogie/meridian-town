@@ -5,7 +5,7 @@
 // A sealed bid is "<day>:<item>:<price>:<salt>:<supplier>" hashed. The salt is written to
 // disk before the commit is sent, so a restart between commit and reveal doesn't lose it.
 import { createHash, randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { teraToGas } from 'near-api-js';
 import { TOWN } from './chain.ts';
 import { KeyStore, withRetries } from './accounts.ts';
@@ -31,11 +31,11 @@ export const SUPPLIERS: Record<string, { name: string; account: string; style: s
 
 interface Sealed { day: number; item: Raw; price: string; salt: string; committed?: string; revealed?: string; error?: string }
 
-const DIR = new URL('../data/', import.meta.url);
-const BIDS = new URL('supplier-bids.json', DIR);
+import { dataFile } from './data.ts';
+
+const BIDS = dataFile('supplier-bids.json');
 let bids: Record<string, Sealed[]> = existsSync(BIDS) ? JSON.parse(readFileSync(BIDS, 'utf8')) : {};
 const saveBids = () => {
-  mkdirSync(DIR, { recursive: true });
   writeFileSync(BIDS, JSON.stringify(bids, null, 1));
 };
 

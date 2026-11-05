@@ -8,3 +8,4 @@ sim/out/
 .DS_Store
 apps/server/data/
 apps/web/dist/
+deploy.env

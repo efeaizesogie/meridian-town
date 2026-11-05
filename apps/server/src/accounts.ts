@@ -1,10 +1,9 @@
 // Accounts the game runs for its agents: each gets a little NEAR for gas and one key that
 // can call only the listed town methods. Keys live in apps/server/data/<file> (git-ignored).
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { Account, KeyPair, PublicKey, actions, nearToYocto } from 'near-api-js';
 import { GAME, TOWN, accountExists, game, hasKey, provider } from './chain.ts';
-
-const DIR = new URL('../data/', import.meta.url);
+import { dataFile } from './data.ts';
 
 interface Saved {
   accountId: string;
@@ -13,17 +12,21 @@ interface Saved {
 }
 
 export class KeyStore {
-  private file: URL;
+  private file: string;
   keys: Record<string, Saved>;
   private signers: Record<string, Account> = {};
 
+  /**
+   * Keys load from `file` in the data directory, or from the environment variable
+   * MERIDIAN_KEYS_<NAME> (e.g. MERIDIAN_KEYS_AGENTS for agents.json) on hosts without a disk.
+   */
   constructor(file: string) {
-    this.file = new URL(file, DIR);
-    this.keys = existsSync(this.file) ? JSON.parse(readFileSync(this.file, 'utf8')) : {};
+    this.file = dataFile(file);
+    const env = process.env[`MERIDIAN_KEYS_${file.replace(/\.json$/, '').toUpperCase()}`];
+    this.keys = existsSync(this.file) ? JSON.parse(readFileSync(this.file, 'utf8')) : env ? JSON.parse(env) : {};
   }
 
   private save() {
-    mkdirSync(DIR, { recursive: true });
     writeFileSync(this.file, JSON.stringify(this.keys, null, 1));
   }
 

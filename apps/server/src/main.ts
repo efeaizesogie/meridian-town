@@ -95,7 +95,12 @@ async function authenticate(req: IncomingMessage, body: string): Promise<string>
     if (!(await hasKey(accountId, publicKey))) throw new HttpError(401, 'key not on this account');
     knownKeys.set(accountId, publicKey);
   }
-  if (!players.get(accountId)) throw new HttpError(404, 'unknown player');
+  // A player whose key checks out on chain but who isn't in our records (a fresh server, a
+  // new host) is simply re-adopted: everything of value lives on chain anyway.
+  if (!players.get(accountId)) {
+    if (!accountId.endsWith(`.${GAME}`)) throw new HttpError(404, 'unknown player');
+    players.add(accountId, accountId.split('.')[0]);
+  }
   return accountId;
 }
 
@@ -139,6 +144,10 @@ const joinsByIp = new Map<string, number[]>();
 
 async function route(req: IncomingMessage, url: URL, body: string): Promise<unknown> {
   const R = players.RULES;
+  if (req.method === 'GET' && url.pathname === '/api/health') {
+    return { ok: !!world, town: TOWN, readAt: world?.readAt ?? null, uptimeS: Math.round(process.uptime()) };
+  }
+
   if (req.method === 'GET' && url.pathname === '/api/config') {
     return { network: NETWORK, rpcs: RPCS, town: TOWN, game: GAME, dayMs, rules: R, guilds: world?.guilds ?? [] };
   }

@@ -1,11 +1,12 @@
 // Off-chain player state the chain doesn't need to see every second: stamina and tool wear.
 // Everything of value (coins, goods, deeds) lives on chain.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { DEFAULT_PARAMS as P } from '@meridian/economy';
 import { freshProgress, maxStamina, type Progress } from './progression.ts';
 
-const DIR = new URL('../data/', import.meta.url);
-const FILE = new URL('players.json', DIR);
+import { dataFile } from './data.ts';
+
+const FILE = dataFile('players.json');
 
 export interface PlayerState {
   name: string;
@@ -22,7 +23,6 @@ let dirty = false;
 
 setInterval(() => {
   if (!dirty) return;
-  mkdirSync(DIR, { recursive: true });
   writeFileSync(FILE, JSON.stringify(players, null, 1));
   dirty = false;
 }, 2000).unref();
