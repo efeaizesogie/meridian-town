@@ -22,7 +22,8 @@ const head = `
 <meta property="og:title" content="Meridian Town">
 <meta property="og:description" content="A market town that runs itself. Gather, trade and buy your own shop from AI merchants. Play free in your browser.">
 <meta property="og:image" content="${SITE}/welcome/img/festival-night.jpg">
-<meta name="twitter:card" content="summary_large_image">`;
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">`;
 s = `<!doctype html>\n<html lang="en">\n<head>\n${s.slice(0, at)}${head}${s.slice(at)}`;
 s = s.replace('</style>\n', '</style>\n</head>\n<body>\n');
 s = `${s.trimEnd()}\n</body>\n</html>\n`;
