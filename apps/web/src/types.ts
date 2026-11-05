@@ -2,7 +2,6 @@
 export const ITEMS = ['wood', 'ore', 'wheat', 'bread', 'tool'] as const;
 export type Item = (typeof ITEMS)[number];
 
-export const ICON: Record<Item, string> = { wood: '🪵', ore: '⛏️', wheat: '🌾', bread: '🍞', tool: '🔨' };
 
 export const KEEPERS: Record<string, { keeper: string; trade: string }> = {
   lumberyard: { keeper: 'Brann', trade: 'buys and sells wood' },

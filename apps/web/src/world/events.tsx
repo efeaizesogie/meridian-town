@@ -5,7 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { World } from '../App';
-import { ICON, type Item } from '../types';
+import type { Item } from '../types';
 import { play } from '../juice';
 import { at } from './layout';
 import { CHARACTERS, Character } from './kit';
@@ -122,8 +122,8 @@ function Porter({ trip, onDone }: { trip: Trip; onDone: () => void }) {
           </mesh>
         </>
       )}
-      <Html position={[0, 2.6, 0]} center style={{ pointerEvents: 'none' }}>
-        <div className={`porter3d ${arrived ? 'done' : ''}`}>{arrived ? `+${trip.qty} ${ICON[trip.item]} delivered` : `${trip.qty} ${ICON[trip.item]}`}</div>
+      <Html position={[0, 2.6, 0]} center zIndexRange={[7, 0]} style={{ pointerEvents: 'none' }}>
+        <div className={`porter3d ${arrived ? 'done' : ''}`}>{arrived ? `+${trip.qty} ${trip.item} delivered` : `${trip.qty} ${trip.item}`}</div>
       </Html>
     </group>
   );

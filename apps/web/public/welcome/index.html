@@ -144,6 +144,8 @@ mark { background: var(--mark); color: inherit; box-decoration-break: clone; -we
 .tag b { font-weight: 600; font-size: var(--text-sm); }
 .tag span { font-size: var(--text-xs); color: var(--color-ink-2); font-variant-numeric: tabular-nums; }
 .board-note { margin: var(--space-sm) var(--space-lg) 0; }
+.sticker { position: absolute; z-index: var(--z-raised); top: calc(var(--space-lg) * -1); right: var(--space-lg); display: grid; place-items: center; width: 108px; height: 108px; border-radius: 50%; rotate: 8deg; padding: var(--space-sm); text-align: center; font-weight: 600; font-size: var(--text-lg); line-height: 1.05; background: var(--grain), var(--color-accent-3); color: var(--color-ink); box-shadow: 0 0 0 4px var(--color-fringe); filter: var(--shadow-paper); }
+@media (max-width: 40rem) { .sticker { width: 84px; height: 84px; font-size: var(--text-md); right: var(--space-sm); } }
 @media (max-width: 40rem) { .hero-art .shot { height: 340px; } }
 @media (max-width: 60rem) { .hero-grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-xl); } .hero { padding-top: var(--space-2xl); } }
 
@@ -211,8 +213,6 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
 .foot-links span:last-child { margin-left: auto; }
 @media (max-width: 40rem) { .foot-links span:last-child { margin-left: 0; } }
 </style>
-</head>
-<body>
 
 <header class="nav">
   <div class="container">
@@ -241,6 +241,7 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
         <small>No wallet, no download. The game pays your gas.</small>
       </div>
       <figure class="hero-art" style="margin:0">
+        <span class="sticker">Mainnet soon</span>
         <div class="sheet"><div class="shot torn"><img src="/welcome/img/festival-night.jpg" alt="Meridian at night during the Festival: a lamplit square of cottages and shops, fireworks bursting over the wheat fields." width="1401" height="814"></div></div>
         <div class="board sheet" aria-label="Prices the shops were paying on market day 190">
           <span class="tag"><b>Lumberyard</b><span>pays 1.36</span></span>
@@ -321,7 +322,7 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
       <dl class="rows">
         <div><dt>A browser</dt><dd>Any desktop browser with WebGL. There is a flat map if 3D runs slow.</dd></div>
         <div><dt>A name</dt><dd>No wallet. The game makes you a NEAR account and keeps its key in your browser.</dd></div>
-        <div><dt>No money</dt><dd>The game covers gas, and coins are testnet coins. You play for fun, not cash.</dd></div>
+        <div><dt>Nothing to pay</dt><dd>The game covers your gas. This is the opening season on NEAR testnet, and Meridian moves to mainnet soon.</dd></div>
         <div><dt>Fifteen minutes</dt><dd>One market day. The town keeps trading while you’re away.</dd></div>
       </dl>
     </div>
@@ -346,7 +347,7 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
       <a href="/play">Play</a>
       <a href="https://github.com/efeaizesogie/meridian-town">Source code</a>
       <span>3D models by Kenney, CC0</span>
-      <span>Built on NEAR, running on testnet</span>
+      <span>Built on NEAR, coming to mainnet soon</span>
     </div>
   </div>
 </footer>

@@ -2,7 +2,7 @@
 // Shops show what they pay and what their keeper last said; the map darkens as the day ends.
 import { useEffect, useState } from 'react';
 import type { World } from './App';
-import { ICON, ITEMS, KEEPERS, meri, type Item } from './types';
+import { ITEMS, KEEPERS, meri, type Item } from './types';
 
 export type Place =
   | 'g:forest' | 'g:mine' | 'g:fields'
@@ -51,10 +51,10 @@ function signFor(world: World, shopId: string): { text: string; hot: boolean } {
   const buys = ITEMS.map((item, i) => ({ item, i, v: meri(s.bid[i]) })).filter(x => x.v > 0).sort((a, b) => b.v / base(b.i) - a.v / base(a.i));
   if (buys.length && ['wood', 'ore', 'wheat'].includes(buys[0].item)) {
     const top = buys[0];
-    return { text: `pays ${top.v.toFixed(2)} ${ICON[top.item as Item]}`, hot: top.v / base(top.i) >= 1.5 };
+    return { text: `${top.item} pays ${top.v.toFixed(2)}`, hot: top.v / base(top.i) >= 1.5 };
   }
   const sells = ITEMS.map((item, i) => ({ item, v: meri(s.ask[i]) })).filter(x => x.v > 0);
-  return { text: sells.map(x => `${ICON[x.item as Item]} ${x.v.toFixed(2)}`).slice(0, 2).join('  '), hot: false };
+  return { text: sells.map(x => `${x.item} ${x.v.toFixed(2)}`).slice(0, 2).join('  '), hot: false };
 }
 
 export function TownMap({ world, onOpen, selected, questPlace, here }: {

@@ -67,7 +67,7 @@ export function Avatar({ target, name, working }: { target: string | null; name:
         <ringGeometry args={[0.55, 0.68, 28]} />
         <meshBasicMaterial color="#ffd36b" toneMapped={false} />
       </mesh>
-      <Html position={[0, 2.4, 0]} center style={{ pointerEvents: 'none' }}>
+      <Html position={[0, 2.4, 0]} center zIndexRange={[7, 0]} style={{ pointerEvents: 'none' }}>
         <div className="you3d">{name}</div>
       </Html>
     </group>

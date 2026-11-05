@@ -11,6 +11,7 @@ import { FastForward } from './FastForward';
 import { Guide, Leaders } from './Guide';
 import { play, reducedMotion, startAmbience, startMusic } from './juice';
 import { World3D } from './world/World3D';
+import { Icon } from './Icon';
 
 const savedGfx = (): '3d' | '2d' => {
   try {
@@ -237,7 +238,7 @@ export default function App() {
         const quote = BigInt(await view<string>('quote_sell', { shop_id: shop.shop.id, item, quantity: n }));
         const { value, hash } = await call<string>('sell', { shop_id: shop.shop.id, item, quantity: n, min_total: String((quote * 97n) / 100n) }, 40);
         play('coin');
-        float(`s:${shop.shop.id}`, `+${fmt(value)} 🪙`, 'coin');
+        float(`s:${shop.shop.id}`, `+${fmt(value)} MERI`, 'coin');
         report(hash, `s:${shop.shop.id}`);
         return `Sold ${n} ${item} to ${shop.shop.name} for ${fmt(value)} MERI`;
       }),
@@ -254,7 +255,7 @@ export default function App() {
         const { hash } = await call('use_item', { item, quantity: 1 });
         const r = await api<{ stamina: number; toolUses: number } & Earned>('/api/use', { txHash: hash });
         play(item === 'bread' ? 'eat' : 'build');
-        float('cottage', item === 'bread' ? '+25 ⚡' : '🔨 ×2', 'gain');
+        float('cottage', item === 'bread' ? '+25 stamina' : 'Double yield', 'gain');
         celebrate(r, 'cottage');
         return item === 'bread' ? `You eat. Stamina ${Math.round(r.stamina)}.` : `Tool in hand: ${r.toolUses} swings at double yield.`;
       }),
@@ -263,7 +264,7 @@ export default function App() {
         const { hash } = await call('use_item', { item, quantity: 1 });
         const r = await api<{ built: number; cottage: { level: number } } & Earned>('/api/use', { txHash: hash, purpose: 'cottage' });
         play('build');
-        float('cottage', r.built ? `🏠 Level ${r.cottage.level}!` : `+1 ${item}`, 'gain');
+        float('cottage', r.built ? `Cottage level ${r.cottage.level}` : `+1 ${item}`, 'gain');
         celebrate(r, 'cottage');
         return r.built ? `Your cottage is now level ${r.cottage.level}.` : `You add a ${item === 'tool' ? 'tool' : 'loaf'} to the cottage.`;
       }),
@@ -271,7 +272,7 @@ export default function App() {
       act('Deliver', async () => {
         const { value, hash } = await call<string>('deliver', { job_id: job.id, quantity: qty });
         play('coin');
-        float('board', `+${fmt(value)} 🪙`, 'coin');
+        float('board', `+${fmt(value)} MERI`, 'coin');
         report(hash, 'board');
         return `Delivered ${qty} ${job.item}: paid ${fmt(value)} MERI from escrow`;
       }),
@@ -287,7 +288,7 @@ export default function App() {
       act('Claim', async () => {
         const { value, hash } = await call<string>('claim_festival', {});
         play('level');
-        float('festival', `+${fmt(value ?? 0)} 🪙`, 'coin');
+        float('festival', `+${fmt(value ?? 0)} MERI`, 'coin');
         report(hash, 'festival');
         return `Festival share: ${fmt(value ?? 0)} MERI`;
       }),
@@ -313,7 +314,7 @@ export default function App() {
           </div>
           <QuestTracker world={world} onGo={() => qp && open(qp)} />
           <div className="map-tools">
-            <button onClick={() => setModal('ff')} title="Replay the next market week in a minute">⏩ Fast-forward</button>
+            <button onClick={() => setModal('ff')} title="Replay the next market week in a minute"><Icon name="forward" /> Fast-forward</button>
           </div>
         </div>
         <div className="ticker"><TownLog log={log} busy={busy} /></div>
@@ -323,7 +324,7 @@ export default function App() {
         )}
       </main>
       <div className="toasts" aria-live="assertive">
-        {toasts.map(t => <div key={t.id} className={`toast ${t.kind}`}>{t.kind === 'level' ? '⭐ ' : '📜 '}{t.text}</div>)}
+        {toasts.map(t => <div key={t.id} className={`toast ${t.kind}`}>{t.text}</div>)}
       </div>
       {modal === 'ff' && <FastForward world={world} onClose={() => setModal(null)} />}
       {modal === 'guide' && <Guide onClose={() => setModal(null)} />}

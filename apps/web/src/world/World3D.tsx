@@ -8,7 +8,7 @@ import { ToneMappingMode } from 'postprocessing';
 import * as THREE from 'three';
 import type { World } from '../App';
 import type { Place } from '../TownMap';
-import { ICON, ITEMS, KEEPERS, meri, short, type Item } from '../types';
+import { ITEMS, KEEPERS, meri, short, type Item } from '../types';
 import { at, daylight, ISLAND_RADIUS, PALETTE } from './layout';
 import { Mat } from './models';
 import { Piece, preloadKit, town } from './kit';
@@ -31,9 +31,9 @@ function signFor(world: World, id: string): { text: string; hot: boolean } {
   if (!s.shop.open) return { text: s.auction ? 'at auction' : 'closed', hot: false };
   const base = (i: number) => meri(world.params.base[i]);
   const buys = ITEMS.map((item, i) => ({ item, i, v: meri(s.bid[i]) })).filter(x => x.v > 0 && x.i < 3).sort((a, b) => b.v / base(b.i) - a.v / base(a.i));
-  if (buys.length) return { text: `pays ${buys[0].v.toFixed(2)} ${ICON[buys[0].item as Item]}`, hot: buys[0].v / base(buys[0].i) >= 1.5 };
+  if (buys.length) return { text: `${buys[0].item} pays ${buys[0].v.toFixed(2)}`, hot: buys[0].v / base(buys[0].i) >= 1.5 };
   const sells = ITEMS.map((item, i) => ({ item, v: meri(s.ask[i]) })).filter(x => x.v > 0);
-  return { text: sells.slice(0, 2).map(x => `${ICON[x.item as Item]} ${x.v.toFixed(2)}`).join('  '), hot: false };
+  return { text: sells.slice(0, 2).map(x => `${x.item} ${x.v.toFixed(2)}`).join('  '), hot: false };
 }
 
 function Water() {
@@ -200,7 +200,7 @@ function Chatter({ world }: { world: World }) {
   const [x, , z] = at(`s:${a.shopId}`);
   const text = a.say.replace(/^[A-Z][a-z]+:\s*/, '');
   return (
-    <Html key={`${a.shopId}${a.at}`} position={[x, 8.2, z]} center zIndexRange={[40, 0]} style={{ pointerEvents: 'none' }}>
+    <Html key={`${a.shopId}${a.at}`} position={[x, 8.2, z]} center zIndexRange={[9, 0]} style={{ pointerEvents: 'none' }}>
       <div className="bubble3d"><b>{KEEPERS[a.shopId]?.keeper}:</b> {text.length > 90 ? text.slice(0, 88) + '…' : text}</div>
     </Html>
   );

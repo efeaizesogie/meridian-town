@@ -1,4 +1,5 @@
-import { ICON, ITEMS, KEEPERS, fmt, meri, short, type AgentReport, type Item, type Params, type Player, type Shop } from './types';
+import { ITEMS, KEEPERS, fmt, meri, short, type AgentReport, type Item, type Params, type Player, type Shop } from './types';
+import { Icon } from './Icon';
 
 /** The exact rule the contract used for this price, in words (RULES.md §2). */
 function explain(shop: Shop, item: Item, side: 'ask' | 'bid', p: Params): string {
@@ -81,7 +82,7 @@ Decided by ${agent.mode === 'llm' ? 'an LLM on NEAR AI Cloud' : 'its strategy ru
               ))}
             </ul>
           )}
-          <span className="muted">{short(agent.accountId)}'s agent · {ago(agent.at)}{agent.mode === 'llm' ? ' · NEAR AI' : ''}</span>
+          <span className="muted">{short(agent.accountId)}, {ago(agent.at)}{agent.mode === 'llm' ? ', thinking with NEAR AI' : ''}</span>
         </div>
       )}
       <table className="prices">
@@ -95,7 +96,7 @@ Decided by ${agent.mode === 'llm' ? 'an LLM on NEAR AI Cloud' : 'its strategy ru
             const canSell = s.buys.includes(item) && shop.bid[i] !== '0';
             return (
               <tr key={item}>
-                <td className="item">{ICON[item]} {item}</td>
+                <td className="item"><span className="with-icon"><Icon name={item} /> {item}</span></td>
                 <td className="stock" title={`${stock} in stock, target ${target}`}>
                   <div className="mini-meter"><div style={{ width: `${Math.min(100, (stock / (target * 2)) * 100)}%` }} /></div>
                   <span>{stock}</span>

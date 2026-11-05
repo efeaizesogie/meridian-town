@@ -55,14 +55,14 @@ export function Spot({ place, onOpen, selected, quest, children, ring = 3.2, lab
           <meshBasicMaterial color={ringColor} transparent opacity={quest ? 0.95 : 0.7} toneMapped={false} />
         </mesh>
       )}
-      <Html position={[0, labelY * scale, 0]} center zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
+      <Html position={[0, labelY * scale, 0]} center zIndexRange={[8, 0]} style={{ pointerEvents: 'none' }}>
         <div className={`label3d ${hover || selected ? 'on' : ''}`}>
           <span>{SPOTS[place].label}</span>
           {sign && <b className={hot ? 'hot' : ''}>{sign}</b>}
         </div>
       </Html>
       {quest && (
-        <Html position={[0, labelY * scale + 1.8, 0]} center style={{ pointerEvents: 'none' }}>
+        <Html position={[0, labelY * scale + 1.8, 0]} center zIndexRange={[8, 0]} style={{ pointerEvents: 'none' }}>
           <div className="quest3d">!</div>
         </Html>
       )}

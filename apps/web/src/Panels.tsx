@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { LogLine, World } from './App';
-import { ICON, ITEMS, KEEPERS, fmt, meri, short, type Job } from './types';
+import { ITEMS, KEEPERS, fmt, meri, short, type Job } from './types';
+import { Icon } from './Icon';
 
 export function Inventory({ world, busy, onUse }: { world: World; busy: string | null; onUse: (item: 'bread' | 'tool') => void }) {
   const items = world.player?.items ?? [0, 0, 0, 0, 0];
@@ -11,7 +12,7 @@ export function Inventory({ world, busy, onUse }: { world: World; busy: string |
       <div className="pack">
         {ITEMS.map((item, i) => (
           <div key={item} className={`slot ${items[i] ? '' : 'empty'}`}>
-            <span className="slot-icon">{ICON[item]}</span>
+            <span className="slot-icon"><Icon name={item} size={28} /></span>
             <span className="slot-count">{items[i]}</span>
             <span className="slot-name">{item}</span>
           </div>
@@ -41,8 +42,8 @@ export function NoticeBoard({ world, busy, onDeliver }: { world: World; busy: st
         return (
           <div className="job" key={job.id}>
             <div>
-              <strong>{keeper}</strong> needs {job.remaining} {ICON[job.item]} {job.item} at <strong>{fmt(job.unit_price)}</strong>
-              <div className="muted">{fmt(BigInt(job.unit_price) * BigInt(job.remaining))} MERI in escrow · {mins} min left</div>
+              <strong>{keeper}</strong> needs {job.remaining} {job.item} at <strong>{fmt(job.unit_price)}</strong>
+              <div className="muted">{fmt(BigInt(job.unit_price) * BigInt(job.remaining))} MERI held in escrow, {mins} min left</div>
             </div>
             <button className="small" disabled={!!busy || have < 1} onClick={() => onDeliver(job, Math.min(have, job.remaining))}>
               Deliver {Math.min(have, job.remaining) || ''}
@@ -61,7 +62,7 @@ export function Deeds({ world, account, busy, onBid }: { world: World; account: 
   return (
     <div className="panel">
       <h2 className="section-title">Deeds &amp; auctions</h2>
-      <p className="hint">A deed is the shop. Its holder appoints the shop's agent and collects its dividends. Broke shops are auctioned; the winning bid refills the till.</p>
+      <p className="hint">A deed is the shop. Its holder appoints the shop’s agent and collects its dividends. Broke shops are auctioned; the winning bid refills the till.</p>
       {world.auctions.length === 0 && <p className="empty-note">No deeds for sale right now.</p>}
       {world.auctions.map(a => {
         const shop = world.shops.find(s => s.shop.id === a.shop_id);
@@ -76,8 +77,8 @@ export function Deeds({ world, account, busy, onBid }: { world: World; account: 
               <span className={`status ${a.kind === 'bankruptcy' ? 'closed' : 'at-auction'}`}>{a.kind === 'bankruptcy' ? 'bankrupt' : 'town sale'}</span>
             </div>
             <div className="muted">
-              {a.high_bidder ? <>High bid {fmt(high)} by {leading ? 'you' : short(a.high_bidder)}</> : <>Reserve {fmt(reserve, 0)}</>} · settles after day {a.ends_day + 1}
-              {shop && <> · till {fmt(shop.cash, 0)}, {fmt(shop.shop.dividends_paid, 0)} paid out so far</>}
+              {a.high_bidder ? <>High bid {fmt(high)} by {leading ? 'you' : short(a.high_bidder)}</> : <>Reserve {fmt(reserve, 0)}</>}. Settles after day {a.ends_day + 1}
+              {shop && <>. Till {fmt(shop.cash, 0)}, {fmt(shop.shop.dividends_paid, 0)} paid out so far</>}
             </div>
             <div className="row">
               <input className="small" inputMode="decimal" value={value} onChange={e => setAmount({ ...amount, [a.shop_id]: e.target.value })} />

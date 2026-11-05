@@ -32,7 +32,7 @@ export function GuildHall({ world, account, busy, act, town }: { world: World; a
     return (
       <div className="panel">
         <h2 className="section-title">Guild hall</h2>
-        <p className="empty-note">The guilds haven't been chartered yet.</p>
+        <p className="empty-note">The guilds haven’t been chartered yet.</p>
       </div>
     );
   }
@@ -73,7 +73,7 @@ function Guild({ g, world, account, busy, act, town, expanded, onToggle }: {
       <button className="guild-head" onClick={onToggle} aria-expanded={expanded}>
         <span>
           <strong>{g.title}</strong>
-          <span className="muted"> · {g.members.length} member{g.members.length === 1 ? '' : 's'} · {fmt(g.treasury, 0)} MERI{deeds.length ? ` · owns ${deeds.map(d => d.shop.name).join(', ')}` : ''}</span>
+          <span className="muted"> {g.members.length} member{g.members.length === 1 ? '' : 's'}, {fmt(g.treasury, 0)} MERI{deeds.length ? `, owns ${deeds.map(d => d.shop.name).join(', ')}` : ''}</span>
         </span>
         {member ? <span className="status open">member</span> : <span className="muted">{expanded ? '▴' : '▾'}</span>}
       </button>
@@ -127,7 +127,7 @@ function Guild({ g, world, account, busy, act, town, expanded, onToggle }: {
                   <div>
                     <span className={`status ${p.status === 'Approved' ? 'open' : p.status === 'InProgress' ? 'at-auction' : 'closed'}`}>{p.status === 'InProgress' ? 'voting' : p.status.toLowerCase()}</span>{' '}
                     {describe(p.kind, world)}
-                    <div className="muted">#{p.id} by {short(p.proposer)} · {yes} for, {no} against{voted ? ` · you voted ${voted.toLowerCase()}` : ''}</div>
+                    <div className="muted">Proposal {p.id} by {short(p.proposer)}: {yes} for, {no} against{voted ? `. You voted ${voted.toLowerCase()}` : ''}</div>
                   </div>
                   {canVote && (
                     <div className="row">

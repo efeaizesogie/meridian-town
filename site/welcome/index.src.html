@@ -1,0 +1,281 @@
+<title>Meridian Town</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Hallmark · shape: Split Studio (draw 01c975) · genre: playful · theme: Hum (deal 3/3, seed cozy-island-market-town-game-9e0f·e4ad00f8·2026-11-05·r0) · redesign: full
+ * hero: Stage · nav: floating pill · footer: mast · imagery: the product (real in-game captures) · signature: the island at Festival night with the square's real price tags pinned under it as card stock
+ * axes: light/rounded-sans/chromatic-yellow · posture: full-palette · contrast: pass · fold: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H5 E4 S5 R4 V4 · weakest: P, a cozy game page could stop at "fun"; the argument is that the shopkeepers are real and can go broke, so their own words sit beside their shop */
+/* Hallmark · waive 44c · the hero's visual and price board run to y 860 of 900; only the text column ends at 742 · the text is centred on the visual, and growing the copy would break the hero word budget */
+@import url("./paper.css");
+@import url("./tokens.css");
+@import url("./base.css");
+
+:root {
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  --fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='turbulence' baseFrequency='.004 .09' numOctaves='3' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .025 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  --page-pad-l: max(var(--gutter), env(safe-area-inset-left, 0px));
+  --page-pad-r: max(var(--gutter), env(safe-area-inset-right, 0px));
+  --shadow-press: color-mix(in oklab, var(--color-ink) 32%, transparent);
+  --nav-glass: color-mix(in oklab, var(--color-card) 92%, transparent);
+  --mark: color-mix(in oklab, var(--color-accent) 55%, transparent);
+  color-scheme: light;
+}
+
+body { background: var(--grain), var(--fibre), var(--color-paper); font-weight: 500; font-size: 1.0625rem; }
+.container { padding-left: var(--page-pad-l); padding-right: var(--page-pad-r); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: var(--z-sticky-nav); background: var(--color-paper); }
+section { padding-block: var(--section-gap); }
+h2 + .lead { margin-top: var(--space-md); }
+.lead { color: var(--color-ink-2); }
+small, figcaption { font-size: var(--text-sm); color: var(--color-muted); }
+mark { background: var(--mark); color: inherit; box-decoration-break: clone; -webkit-box-decoration-break: clone; padding-inline: var(--space-3xs); }
+
+/* ---------- card-stock controls ---------- */
+.btn { --edge: 5px; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-xs); min-height: 54px; padding: 0 var(--space-lg); border: 0; border-radius: var(--radius-stock); font-weight: 600; font-size: var(--text-md); text-decoration: none; color: var(--color-ink); cursor: pointer;
+  background: var(--grain), var(--fibre), var(--color-card);
+  box-shadow: inset 0 0 0 1px var(--color-rule), 0 var(--edge) 0 0 var(--color-edge);
+  transition: translate var(--dur-micro) var(--ease-snap), box-shadow var(--dur-micro) var(--ease-snap); }
+.btn--primary { background: var(--grain), var(--fibre), var(--color-accent); color: var(--color-accent-ink);
+  box-shadow: 0 var(--edge) 0 0 var(--color-accent-deep), 2px calc(var(--edge) + 4px) 10px -3px var(--shadow-press);
+  transition-timing-function: var(--ease-spring); }
+.btn:hover { --edge: 7px; translate: 0 -2px; }
+.btn:active { --edge: 1px; translate: 0 4px; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; translate: none; }
+.btn:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 4px; transition: none; }
+.btn--small { min-height: 44px; padding: 0 var(--space-md); font-size: var(--text-sm); }
+.text-link { color: var(--color-accent-2); font-weight: 600; }
+.text-link:hover { text-decoration-thickness: 2px; }
+.text-link:active { color: var(--color-ink); }
+
+/* ---------- nav: a floating pill ---------- */
+.nav { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--space-md)); z-index: var(--z-sticky-nav); padding-top: var(--space-md); }
+.nav .pill { display: flex; align-items: center; gap: var(--space-lg); padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-lg); border-radius: var(--radius-pill); background: var(--nav-glass); box-shadow: var(--shadow-card), inset 0 0 0 1px var(--color-rule); }
+.wordmark { font-weight: 600; font-size: var(--text-lg); letter-spacing: var(--tracking-display); text-decoration: none; margin-right: auto; }
+.nav-links { display: flex; gap: var(--space-lg); font-size: var(--text-sm); }
+.nav-links a { text-decoration: none; color: var(--color-ink-2); }
+.nav-links a:hover { color: var(--color-ink); text-decoration: underline; }
+@media (max-width: 52rem) { .nav-links { display: none; } }
+
+/* ---------- hero: Stage ---------- */
+.hero { padding-block: var(--space-2xl) var(--section-gap-s); }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--space-3xl); align-items: center; }
+.hero-text { display: grid; gap: var(--space-lg); justify-items: start; animation: rise var(--dur-long) var(--ease-snap) both; }
+.hero-text .actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-md) var(--space-lg); margin-top: var(--space-xs); }
+.hero-art { position: relative; animation: rise var(--dur-long) var(--ease-snap) 80ms both; }
+@keyframes rise { from { opacity: 0; translate: 0 12px; } to { opacity: 1; translate: 0 0; } }
+.sheet { filter: var(--shadow-paper); }
+.torn { clip-path: var(--tear-bottom); }
+.hero-art .shot { height: clamp(460px, 72dvh, 700px); border-radius: var(--radius-card) var(--radius-card) 0 0; overflow: hidden; }
+.hero-art .shot img { width: 100%; height: 100%; object-fit: cover; object-position: 96% 22%; }
+.board { position: relative; margin: calc(var(--space-xl) * -1) var(--space-lg) 0; padding: var(--space-md); border-radius: var(--radius-stock); background: var(--grain), var(--fibre), var(--color-kraft); display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.tag { display: grid; gap: var(--space-3xs); padding: var(--space-xs) var(--space-sm); border-radius: var(--space-sm); background: var(--grain), var(--color-card); box-shadow: 0 3px 0 0 var(--color-edge); line-height: 1.15; }
+.tag b { font-weight: 600; font-size: var(--text-sm); }
+.tag span { font-size: var(--text-xs); color: var(--color-ink-2); font-variant-numeric: tabular-nums; }
+.board-note { margin: var(--space-sm) var(--space-lg) 0; }
+.sticker { position: absolute; z-index: var(--z-raised); top: calc(var(--space-lg) * -1); right: var(--space-lg); display: grid; place-items: center; width: 108px; height: 108px; border-radius: 50%; rotate: 8deg; padding: var(--space-sm); text-align: center; font-weight: 600; font-size: var(--text-lg); line-height: 1.05; background: var(--grain), var(--color-accent-3); color: var(--color-ink); box-shadow: 0 0 0 4px var(--color-fringe); filter: var(--shadow-paper); }
+@media (max-width: 40rem) { .sticker { width: 84px; height: 84px; font-size: var(--text-md); right: var(--space-sm); } }
+@media (max-width: 40rem) { .hero-art .shot { height: 340px; } }
+@media (max-width: 60rem) { .hero-grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-xl); } .hero { padding-top: var(--space-2xl); } }
+
+/* ---------- shared split rows ---------- */
+.split { display: grid; gap: var(--space-3xl); align-items: center; }
+.split--5-7 { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.split--4-8 { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); }
+.split--6-6 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 60rem) { .split[class*="split--"] { grid-template-columns: minmax(0, 1fr); gap: var(--space-xl); } }
+.text-col { display: grid; gap: var(--space-lg); align-content: start; }
+.frame { border-radius: var(--radius-card); overflow: hidden; background: var(--color-paper-3); }
+.frame img { width: 100%; aspect-ratio: 1401 / 814; object-fit: cover; }
+
+/* ---------- hours: a Switcher built on radios, works without script ---------- */
+.hours { background: var(--grain), var(--fibre), var(--color-paper-2); clip-path: var(--tear-top); padding-top: calc(var(--section-gap-s) + var(--space-sm)); padding-bottom: var(--section-gap-s); }
+.switch { display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-top: var(--space-xs); }
+.switch input { position: absolute; opacity: 0; pointer-events: none; }
+.switch label { --edge: 4px; min-height: 44px; display: inline-flex; align-items: center; padding: 0 var(--space-md); border-radius: var(--radius-pill); font-weight: 600; font-size: var(--text-sm); cursor: pointer; background: var(--grain), var(--color-card); box-shadow: inset 0 0 0 1px var(--color-rule), 0 var(--edge) 0 0 var(--color-edge); transition: translate var(--dur-micro) var(--ease-snap), box-shadow var(--dur-micro) var(--ease-snap); }
+.switch label:hover { --edge: 6px; translate: 0 -1px; }
+.switch label:active { --edge: 1px; translate: 0 3px; }
+.switch input:checked + label { background: var(--color-ink); color: var(--color-paper); box-shadow: 0 2px 0 0 var(--color-ink-2); }
+.switch input:focus-visible + label { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+.hour-frames figure { margin: 0; display: none; }
+.hours:has(#h-day:checked) .f-day, .hours:has(#h-dusk:checked) .f-dusk, .hours:has(#h-night:checked) .f-night { display: block; }
+.hours:not(:has(input:checked)) .f-day { display: block; }
+.hour-frames figcaption { margin-top: var(--space-sm); }
+
+/* ---------- shopkeepers ---------- */
+.says { display: grid; gap: var(--space-md); margin-top: var(--space-xs); }
+.speech { margin: 0; padding: var(--space-lg); border-radius: var(--radius-card); background: var(--grain), var(--fibre), var(--color-card); box-shadow: var(--shadow-card); display: grid; gap: var(--space-sm); }
+.speech blockquote { margin: 0; font-size: var(--text-xl); font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; }
+.speech.thinks blockquote { font-size: var(--text-md); font-weight: 500; color: var(--color-ink-2); line-height: 1.5; }
+.speech figcaption b { color: var(--color-ink); font-weight: 600; }
+.ui-frame img { aspect-ratio: 8 / 5; }
+
+/* ---------- how you play: Pinned ---------- */
+.steps { list-style: none; margin: var(--space-xl) 0 0; padding: 0; display: grid; gap: var(--space-xs); counter-reset: s; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: var(--space-md); padding: var(--space-lg) 0; border-top: var(--rule-hair) solid var(--color-rule); }
+.steps li::before { content: counter(s); width: 40px; height: 40px; border-radius: var(--radius-pill); display: grid; place-items: center; font-weight: 600; background: var(--grain), var(--color-mint); color: var(--color-ink); }
+.steps h3 { margin-bottom: var(--space-2xs); }
+.steps p { color: var(--color-ink-2); }
+.pin { position: sticky; top: calc(var(--space-3xl) + var(--space-md)); align-self: start; }
+.play-grid { align-items: start; }
+@media (max-width: 60rem) { .pin { position: static; } }
+
+/* ---------- what it takes: Rows ---------- */
+.needs { border-top: var(--rule-hair) solid var(--color-rule); }
+.rows { margin: 0; display: grid; }
+.rows div { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: var(--space-lg); padding-block: var(--space-xl); border-bottom: var(--rule-hair) solid var(--color-rule); }
+.rows dt { font-size: var(--text-title); font-weight: 600; letter-spacing: -0.01em; }
+.rows dd { margin: 0; color: var(--color-ink-2); max-width: 52ch; }
+@media (max-width: 40rem) { .rows div { grid-template-columns: minmax(0, 1fr); gap: var(--space-xs); } }
+
+/* ---------- close: the one pear field ---------- */
+.close { background: var(--grain), var(--fibre), var(--color-accent); clip-path: var(--tear-top); padding-block: calc(var(--section-gap-s) + var(--space-sm)) var(--section-gap-s); }
+.close .frame { box-shadow: var(--shadow-card); }
+.close .frame img { aspect-ratio: 1131 / 820; }
+.close p { color: var(--color-ink-2); }
+
+/* ---------- footer: mast ---------- */
+footer { padding-block: var(--space-2xl) var(--space-xl); }
+.mast { font-size: clamp(4rem, 14vw, 12rem); font-weight: 600; letter-spacing: -0.05em; line-height: 0.85; margin: 0; overflow-wrap: break-word; min-width: 0; }
+.foot-links { display: flex; flex-wrap: wrap; gap: var(--space-sm) var(--space-xl); margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: var(--rule-hair) solid var(--color-rule); font-size: var(--text-sm); color: var(--color-muted); }
+.foot-links a { color: var(--color-ink-2); }
+.foot-links span:last-child { margin-left: auto; }
+@media (max-width: 40rem) { .foot-links span:last-child { margin-left: 0; } }
+</style>
+
+<header class="nav">
+  <div class="container">
+    <div class="pill">
+      <a class="wordmark" href="#top">Meridian</a>
+      <nav class="nav-links" aria-label="Sections">
+        <a href="#hours">The island</a>
+        <a href="#shopkeepers">Shopkeepers</a>
+        <a href="#play">How to play</a>
+      </nav>
+      <a class="btn btn--primary btn--small" href="https://meridian-town-production.up.railway.app/">Play free</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-text">
+        <h1>A market town that runs itself.</h1>
+        <p class="lead">Gather, trade, and buy your own shop from AI merchants.</p>
+        <div class="actions">
+          <a class="btn btn--primary" href="https://meridian-town-production.up.railway.app/">Play in your browser</a>
+          <a class="text-link" href="#hours">See the island</a>
+        </div>
+        <small>No wallet, no download. The game pays your gas.</small>
+      </div>
+      <figure class="hero-art" style="margin:0">
+        <span class="sticker">Mainnet soon</span>
+        <div class="sheet"><div class="shot torn"><img src="img/festival-night.jpg" alt="Meridian at night during the Festival: a lamplit square of cottages and shops, fireworks bursting over the wheat fields." width="1401" height="814"></div></div>
+        <div class="board sheet" aria-label="Prices the shops were paying on market day 190">
+          <span class="tag"><b>Lumberyard</b><span>pays 1.36</span></span>
+          <span class="tag"><b>Forge</b><span>pays 1.67</span></span>
+          <span class="tag"><b>Mine Office</b><span>pays 1.89</span></span>
+          <span class="tag"><b>Bakery</b><span>pays 1.94</span></span>
+          <span class="tag"><b>Granary</b><span>pays 0.77</span></span>
+        </div>
+        <figcaption class="board-note">What the shops paid on market day 190, in MERI coins.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="hours" id="hours">
+    <div class="container split split--5-7">
+      <div class="text-col">
+        <h2>The island keeps its own hours.</h2>
+        <p class="lead">A market day lasts fifteen minutes. Trade well all week and the night ends in fireworks.</p>
+        <div class="switch" role="radiogroup" aria-label="Time of day">
+          <input type="radio" name="hour" id="h-day" checked><label for="h-day">Morning</label>
+          <input type="radio" name="hour" id="h-dusk"><label for="h-dusk">Dusk</label>
+          <input type="radio" name="hour" id="h-night"><label for="h-night">Festival night</label>
+        </div>
+      </div>
+      <div class="hour-frames">
+        <figure class="f-day"><div class="frame"><img src="img/island-day.jpg" alt="The whole island by day: the Forest, the Mine and the Fields around a square of six shops." width="1401" height="814" loading="lazy"></div><figcaption>Morning over the square, with the Forest, the Mine and the Fields behind it.</figcaption></figure>
+        <figure class="f-dusk"><div class="frame"><img src="img/island-dusk.jpg" alt="The island in low evening light, long shadows across the paths." width="1401" height="814" loading="lazy"></div><figcaption>Long shadows, and porters out on their deliveries.</figcaption></figure>
+        <figure class="f-night"><div class="frame"><img src="img/festival-night.jpg" alt="Fireworks over the Fields on Festival night." width="1401" height="814" loading="lazy"></div><figcaption>The week’s target met, and fireworks over the Fields.</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="shopkeepers">
+    <div class="container split split--5-7">
+      <div class="text-col">
+        <h2>Six shopkeepers, each with a plan.</h2>
+        <p class="lead">Each runs its own till, sets its own prices, and <mark>can go broke</mark>.</p>
+        <div class="says">
+          <figure class="speech">
+            <blockquote>Forge is hot, stock’s steady, and tools’ll sell in time. No deals worth my hammer today.</blockquote>
+            <figcaption><b>Hilde</b>, at the Forge</figcaption>
+          </figure>
+          <figure class="speech thinks">
+            <blockquote>Wood is glutted, so I lower its target to the allowed minimum to stop buying more and let stock drain.</blockquote>
+            <figcaption><b>Brann</b>, thinking it over at the Lumberyard</figcaption>
+          </figure>
+        </div>
+      </div>
+      <figure class="ui-frame" style="margin:0">
+        <div class="frame sheet"><img src="img/ui-shop.jpg" alt="Brann's Lumberyard in the game, its panel open with the till, stock and buy and sell prices." width="800" height="500" loading="lazy"></div>
+        <figcaption style="margin-top:var(--space-sm)">Brann’s Lumberyard, open. Till, stock and prices come straight from the town’s ledger.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="play" class="play">
+    <div class="container split split--6-6 play-grid">
+      <div class="text-col">
+        <h2>From empty pack to shop owner.</h2>
+        <ol class="steps">
+          <li><div><h3>Gather</h3><p>Chop wood in the Forest, dig ore in the Mine, cut wheat in the Fields.</p></div></li>
+          <li><div><h3>Sell where it pays</h3><p>Shops pay more for what they lack. Reading the board is the game.</p></div></li>
+          <li><div><h3>Take contracts</h3><p>Shops post delivery jobs with the coin held up front. Deliver and get paid.</p></div></li>
+          <li><div><h3>Own a shop</h3><p>When a merchant goes broke, its deed goes to auction. Win it and its earnings are yours.</p></div></li>
+          <li><div><h3>Throw the Festival</h3><p>Hit the week’s trade target together and new coin goes to everyone who helped.</p></div></li>
+        </ol>
+      </div>
+      <figure class="pin" style="margin:0">
+        <div class="frame sheet"><img src="img/ui-prices.jpg" alt="The game at dusk with its interface: the quest scroll, the Festival meter and a price tag over every shop." width="800" height="500" loading="lazy"></div>
+        <figcaption style="margin-top:var(--space-sm)">Your first quest, the Festival meter, and every shop’s price, all on one screen.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="needs" aria-labelledby="needs-title">
+    <div class="container split split--4-8" style="align-items:start">
+      <h2 id="needs-title">What it takes to play.</h2>
+      <dl class="rows">
+        <div><dt>A browser</dt><dd>Any desktop browser with WebGL. There is a flat map if 3D runs slow.</dd></div>
+        <div><dt>A name</dt><dd>No wallet. The game makes you a NEAR account and keeps its key in your browser.</dd></div>
+        <div><dt>Nothing to pay</dt><dd>The game covers your gas. This is the opening season on NEAR testnet, and Meridian moves to mainnet soon.</dd></div>
+        <div><dt>Fifteen minutes</dt><dd>One market day. The town keeps trading while you’re away.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="close">
+    <div class="container split split--5-7">
+      <div class="text-col" style="justify-items:start">
+        <h2>Your stall is waiting.</h2>
+        <p class="lead">Pick a name and you’re on the island.</p>
+        <a class="btn" href="https://meridian-town-production.up.railway.app/">Enter Meridian</a>
+      </div>
+      <div class="frame"><img src="img/lumberyard.jpg" alt="Two townsfolk outside the red-roofed Lumberyard." width="1131" height="820" loading="lazy"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <p class="mast">Meridian</p>
+    <div class="foot-links">
+      <a href="https://meridian-town-production.up.railway.app/">Play</a>
+      <a href="https://github.com/efeaizesogie/meridian-town">Source code</a>
+      <span>3D models by Kenney, CC0</span>
+      <span>Built on NEAR, coming to mainnet soon</span>
+    </div>
+  </div>
+</footer>

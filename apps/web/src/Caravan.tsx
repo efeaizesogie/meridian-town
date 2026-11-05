@@ -2,7 +2,8 @@
 // prices stay hidden (only a count of sealed bids) until they reveal in the second half.
 import { useEffect, useState } from 'react';
 import type { World } from './App';
-import { ICON, KEEPERS, fmt, type CaravanRound } from './types';
+import { KEEPERS, fmt, type CaravanRound } from './types';
+import { Icon } from './Icon';
 
 const RAW = ['wood', 'ore', 'wheat'] as const;
 
@@ -31,13 +32,13 @@ export function Caravan({ world }: { world: World }) {
         <h2 className="section-title">The caravan</h2>
         {r && (
           <span className={`status ${c!.phase === 'commit' ? 'at-auction' : c!.phase === 'reveal' ? 'open' : 'closed'}`}>
-            {c!.phase === 'commit' ? `sealed bids · ${mmss}` : c!.phase === 'reveal' ? `revealing · ${mmss}` : 'closed'}
+            {c!.phase === 'commit' ? `sealed bids, ${mmss} left` : c!.phase === 'reveal' ? `revealing, ${mmss} left` : 'closed'}
           </span>
         )}
       </div>
       <p className="hint">
-        Shops short of raw goods pool their orders. Outside suppliers seal their prices, then reveal; the lowest price fills every order it's within.
-        Anyone can bid: the market doesn't know who runs a supplier.
+        Shops short of raw goods pool their orders. Outside suppliers seal their prices, then reveal; the lowest price fills every order it’s within.
+        Anyone can bid: the market doesn’t know who runs a supplier.
       </p>
       {!r && <p className="empty-note">No caravan today: no shop is short enough to order.</p>}
       {r && (
@@ -49,7 +50,7 @@ export function Caravan({ world }: { world: World }) {
             return (
               <div className="good" key={item}>
                 <div className="good-head">
-                  <strong>{ICON[item]} {item}</strong>
+                  <strong className="with-icon"><Icon name={item} /> {item}</strong>
                   <span className="muted">cost floor {fmt(c!.import_cost[i])}</span>
                 </div>
                 {orders.map(o => (
@@ -57,7 +58,7 @@ export function Caravan({ world }: { world: World }) {
                 ))}
                 <div className="sealed">
                   {r.commits[i]} sealed bid{r.commits[i] === 1 ? '' : 's'}
-                  {bids.length > 0 && <> · revealed: {bids.map((b, j) => <span key={b.supplier} className={j === 0 ? 'lead' : ''}>{supplierName(world, b.supplier)} {fmt(b.price)}</span>).reduce<React.ReactNode[]>((a, x, j) => (j ? [...a, ', ', x] : [x]), [])}</>}
+                  {bids.length > 0 && <>. Revealed: {bids.map((b, j) => <span key={b.supplier} className={j === 0 ? 'lead' : ''}>{supplierName(world, b.supplier)} {fmt(b.price)}</span>).reduce<React.ReactNode[]>((a, x, j) => (j ? [...a, ', ', x] : [x]), [])}</>}
                 </div>
               </div>
             );
@@ -73,11 +74,11 @@ function LastRound({ world, round }: { world: World; round: CaravanRound }) {
   if (!round.settled) return null;
   return (
     <div className="last-round">
-      <h4>Yesterday's caravan</h4>
+      <h4>Yesterday’s caravan</h4>
       {round.fills.length === 0 && <p className="empty-note">No bid was low enough to fill an order.</p>}
       {round.fills.map((f, i) => (
         <div key={i} className="muted">
-          {supplierName(world, f.supplier)} delivered {f.quantity} {ICON[f.item]} {f.item} to {KEEPERS[f.shop_id]?.keeper ?? f.shop_id} at {fmt(f.price)}
+          {supplierName(world, f.supplier)} delivered {f.quantity} {f.item} to {KEEPERS[f.shop_id]?.keeper ?? f.shop_id} at {fmt(f.price)}
         </div>
       ))}
     </div>

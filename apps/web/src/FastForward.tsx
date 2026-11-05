@@ -4,7 +4,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_PARAMS, ITEMS, RAW, Town, type Item, type Strategy, type TownEvent } from '@meridian/economy';
 import type { World } from './App';
-import { ICON, meri } from './types';
+import { meri } from './types';
+import { Icon } from './Icon';
 
 const DAYS = 7;
 const TICKS = DAYS * DEFAULT_PARAMS.ticksPerDay;
@@ -109,14 +110,13 @@ export function FastForward({ world, onClose }: { world: World; onClose: () => v
       <div className="ff">
         <header className="ff-head">
           <div>
-            <p className="eyebrow">Fast-forward</p>
-            <h2 id="ff-title">The next market week, in {speed === 60_000 ? 'a minute' : '15 seconds'}</h2>
+            <h2 id="ff-title">Next week, fast-forwarded to {speed === 60_000 ? 'a minute' : '15 seconds'}</h2>
             <p className="hint">
               A copy of the town as it is right now, run on the same rules the contract enforces: prices, contracts, the caravan, upkeep, auctions and the Festival.
               Merchants follow their strategy rules here. Nothing is sent to the chain.
             </p>
           </div>
-          <button className="link" onClick={onClose} aria-label="Close fast-forward">close ✕</button>
+          <button className="link" onClick={onClose} aria-label="Close fast-forward"><Icon name="close" /></button>
         </header>
 
         <div className="ff-controls">
@@ -214,10 +214,10 @@ function PriceChart({ samples }: { samples: Sample[] }) {
     <figure className="chart">
       <figcaption>
         <strong>Prices players meet</strong>
-        <span className="muted"> · × each good's reference price · raw goods: what shops pay you; bread &amp; tools: what you pay</span>
+        <span className="muted">As a multiple of each good’s reference price. Raw goods show what shops pay you; bread and tools show what you pay.</span>
       </figcaption>
       <div className="legend">
-        {ITEMS.map(i => <span key={i}><i className={`sw s-${i}`} />{ICON[i]} {i}</span>)}
+        {ITEMS.map(i => <span key={i}><i className={`sw s-${i}`} />{i}</span>)}
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Price of each good over the simulated week" onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
         {ticks.map(v => (
@@ -286,13 +286,13 @@ function Summary({ town, startSupply }: { town: Town; startSupply: number }) {
   const change = ((town.supply / startSupply) - 1) * 100;
   return (
     <section className={`ff-summary ${w?.hit ? 'hit' : 'miss'}`}>
-      <h3>{w?.hit ? '🎉 The town held its Festival' : '🔥 No Festival this week'}</h3>
+      <h3>{w?.hit ? 'The town held its Festival' : 'No Festival this week'}</h3>
       <p>
         {w ? <>Players traded {w.volume.toFixed(0)} MERI against a target of {w.target.toFixed(0)}. </> : null}
         {w?.hit ? `${w.minted.toFixed(0)} new MERI were minted to the traders` : `${(w?.burned ?? 0).toFixed(0)} MERI of the treasury burned`}, so the coin supply moved {change >= 0 ? '+' : ''}{change.toFixed(1)}%.
       </p>
       <p className="muted">
-        {count('contract')} contracts posted, {count('filled')} filled · {count('caravan')} caravan deliveries · {count('closed')} shops closed, {count('auction')} won at auction, {count('rescue')} rescued
+        {count('contract')} contracts posted, {count('filled')} filled, {count('caravan')} caravan deliveries, {count('closed')} shops closed, {count('auction')} won at auction, {count('rescue')} rescued
       </p>
     </section>
   );

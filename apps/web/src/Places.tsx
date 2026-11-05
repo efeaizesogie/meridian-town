@@ -8,7 +8,8 @@ import { ShopCard } from './ShopCard';
 import { Inventory, NoticeBoard, Deeds } from './Panels';
 import { GuildHall } from './Guilds';
 import { Caravan } from './Caravan';
-import { ICON, KEEPERS, fmt, meri, type Item, type Job, type Shop } from './types';
+import { KEEPERS, fmt, meri, type Item, type Job, type Shop } from './types';
+import { Icon } from './Icon';
 
 export interface Actions {
   gather: (ground: string) => void;
@@ -59,7 +60,7 @@ export function PlaceDrawer({ place, world, config, account, busy, act, actions,
     <aside className="drawer" aria-label={SPOTS[place]?.label}>
       <header className="drawer-head">
         <h2>{SPOTS[place]?.label}</h2>
-        <button className="link" onClick={onClose} aria-label="Back to the map">✕</button>
+        <button className="link" onClick={onClose} aria-label="Back to the map"><Icon name="close" /></button>
       </header>
       <div className="drawer-body">{body}</div>
     </aside>
@@ -83,22 +84,22 @@ function Ground({ place, world, config, busy, actions, onGo }: { place: Place; w
       <p className="hint">{g.blurb}</p>
       <div className="meter big" title={`${left} of ${cap} ${g.item} left`}>
         <div className={`meter-fill ${left / cap < 0.2 ? 'low' : ''}`} style={{ width: `${(left / cap) * 100}%` }} />
-        <span>{left} {g.item} left · regrows through the day · shared by everyone</span>
+        <span>{left} {g.item} left. Regrows through the day, shared by everyone</span>
       </div>
       <button className={`swing ${busy === 'Gather' ? 'swinging' : ''}`} disabled={!!busy || tired || left < 1} onClick={() => actions.gather(place.slice(2))}>
-        <span className="swing-icon" aria-hidden>{place === 'g:forest' ? '🪓' : place === 'g:mine' ? '⛏️' : '🌾'}</span>
+        <span className="swing-icon" aria-hidden><Icon name={place === 'g:forest' ? 'axe' : place === 'g:mine' ? 'pick' : 'sickle'} size={36} /></span>
         {busy === 'Gather' ? 'Swinging…' : tired ? 'Too tired: eat or rest' : left < 1 ? 'Bare: try another ground' : `Swing ×${config.rules.maxSwingsPerRequest}`}
-        <small>{config.rules.swingCost * config.rules.maxSwingsPerRequest} stamina · {(me?.toolUses ?? 0) > 0 ? 'tool doubles your yield' : '1 per swing, 2 with a tool'}</small>
+        <small>{config.rules.swingCost * config.rules.maxSwingsPerRequest} stamina, {(me?.toolUses ?? 0) > 0 ? 'tool doubles your yield' : '1 per swing, 2 with a tool'}</small>
       </button>
       <div className="tip-card">
-        <strong>{ICON[g.item]} In your pack: {have}</strong>
+        <strong className="with-icon"><Icon name={g.item as Item} /> In your pack: {have}</strong>
         {best && (
           <p>
             Best buyer right now: <strong>{KEEPERS[best.s.shop.id]?.keeper}</strong> at {best.s.shop.name}, paying <strong>{best.bid.toFixed(2)}</strong>
             {buyers[1] ? <> (next best {buyers[1].bid.toFixed(2)})</> : null}.
           </p>
         )}
-        {best && <button className="small" onClick={() => onGo(`s:${best.s.shop.id}`)}>Walk to {best.s.shop.name} →</button>}
+        {best && <button className="small" onClick={() => onGo(`s:${best.s.shop.id}`)}>Walk to {best.s.shop.name}</button>}
       </div>
     </div>
   );
@@ -112,18 +113,18 @@ function Cottage({ world, busy, actions }: { world: World; busy: string | null; 
       <Inventory world={world} busy={busy} onUse={actions.use} />
       {c && (
         <div className="panel">
-          <h2 className="section-title">Your cottage · level {c.level}</h2>
+          <h2 className="section-title">Your cottage, level {c.level}</h2>
           <p className="hint">A bigger home holds more strength: your stamina cap is <strong>{c.maxStamina}</strong>. Building burns the tools and bread you bring, so the shops sell more and the town grows.</p>
           {c.next ? (
             <>
               <div className="build">
                 <div>
-                  <span>{ICON.tool} Tools</span>
+                  <span className="with-icon"><Icon name="tool" /> Tools</span>
                   <div className="bar"><div style={{ width: `${Math.min(100, (c.tool / Math.max(1, c.next.cost.tool)) * 100)}%` }} /></div>
                   <span className="muted">{c.tool} / {c.next.cost.tool}</span>
                 </div>
                 <div>
-                  <span>{ICON.bread} Bread</span>
+                  <span className="with-icon"><Icon name="bread" /> Bread</span>
                   <div className="bar"><div style={{ width: `${Math.min(100, (c.bread / Math.max(1, c.next.cost.bread)) * 100)}%` }} /></div>
                   <span className="muted">{c.bread} / {c.next.cost.bread}</span>
                 </div>
@@ -138,7 +139,7 @@ function Cottage({ world, busy, actions }: { world: World; busy: string | null; 
         </div>
       )}
       {world.me && (
-        <p className="muted">Lifetime: {world.me.stats.gathered} gathered · {world.me.stats.sold} MERI from sales · {world.me.stats.delivered} MERI from contracts</p>
+        <p className="muted">Lifetime: {world.me.stats.gathered} gathered, {world.me.stats.sold} MERI from sales, {world.me.stats.delivered} MERI from contracts</p>
       )}
     </div>
   );
@@ -155,18 +156,18 @@ function Festival({ world, onClaim, onFastForward }: { world: World; onClaim: ()
         in proportion to how much they traded (up to 500 each). Miss it and <strong>5% of the treasury burns</strong>, and the town gets poorer.
       </p>
       <div className="meter big"><div className={`meter-fill ${counted >= target ? '' : 'amber'}`} style={{ width: `${Math.min(100, (counted / target) * 100)}%` }} /><span>{counted.toFixed(0)} of {target.toFixed(0)} MERI traded this week</span></div>
-      <p>Streak: <strong>{world.town.streak}</strong> · best ever {world.town.best_streak}</p>
-      {claimable > 0n && <button className="primary" onClick={onClaim}>🎁 Claim your Festival share: {fmt(claimable)} MERI</button>}
+      <p>Streak: <strong>{world.town.streak}</strong>, best ever {world.town.best_streak}</p>
+      {claimable > 0n && <button className="primary" onClick={onClaim}>Claim your Festival share: {fmt(claimable)} MERI</button>}
       <h3>Past weeks</h3>
-      {world.weeks.length === 0 && <p className="empty-note">The first Festival hasn't happened yet.</p>}
+      {world.weeks.length === 0 && <p className="empty-note">The first Festival hasn’t happened yet.</p>}
       <ul className="weeks">
         {[...world.weeks].reverse().map(w => (
           <li key={w.week} className={w.hit ? 'good' : 'bad'}>
-            Week {w.week + 1}: {w.hit ? `🎉 Festival · ${fmt(w.minted, 0)} MERI minted` : `🔥 missed · ${fmt(w.burned, 0)} MERI burned`} <span className="muted">({fmt(w.counted, 0)} of {fmt(w.target, 0)})</span>
+            Week {w.week + 1}: {w.hit ? `Festival, ${fmt(w.minted, 0)} MERI minted` : `missed, ${fmt(w.burned, 0)} MERI burned`} <span className="muted">({fmt(w.counted, 0)} of {fmt(w.target, 0)})</span>
           </li>
         ))}
       </ul>
-      <button onClick={onFastForward}>⏩ What happens next week? Fast-forward it</button>
+      <button onClick={onFastForward}><Icon name="forward" /> See next week, fast-forwarded</button>
     </div>
   );
 }
