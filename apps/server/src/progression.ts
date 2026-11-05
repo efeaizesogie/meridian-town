@@ -58,7 +58,7 @@ export interface Progress {
   xp: number;
   cottage: { level: number; tool: number; bread: number };
   quests: Record<string, boolean>;
-  stats: { gathered: number; sold: number; delivered: number };
+  stats: { gathered: number; sold: number; delivered: number; festival?: number };
   reported: string[];
 }
 

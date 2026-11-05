@@ -6,7 +6,7 @@ export type IconName =
   | 'wood' | 'ore' | 'wheat' | 'bread' | 'tool'
   | 'coin' | 'stamina' | 'book' | 'rosette' | 'map' | 'island' | 'music' | 'sound' | 'mute'
   | 'door' | 'close' | 'scroll' | 'flag' | 'sack' | 'sun' | 'dusk' | 'moon' | 'forward'
-  | 'axe' | 'pick' | 'sickle' | 'house';
+  | 'axe' | 'pick' | 'sickle' | 'house' | 'key';
 
 const P: Record<IconName, React.ReactNode> = {
   wood: <>
@@ -113,6 +113,11 @@ const P: Record<IconName, React.ReactNode> = {
   sickle: <>
     <path className="ic-stone" d="M8 13C3 11 3 4 9 2.5c-3 2.5-3 7 1.5 8.8z" />
     <path className="ic-kraft" d="M9 12.5l1.8-1.3 5.5 6.3-1.8 1.3z" />
+  </>,
+  key: <>
+    <circle className="ic-pear" cx="6.5" cy="10" r="4" />
+    <circle className="ic-card" cx="6.5" cy="10" r="1.4" />
+    <path className="ic-kraft" d="M10 8.8h8v2.4h-1.5v2.3h-2v-2.3H10z" />
   </>,
   house: <>
     <path className="ic-coral" d="M2.5 9.5 10 3l7.5 6.5z" />

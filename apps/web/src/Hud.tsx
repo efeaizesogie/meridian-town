@@ -42,13 +42,14 @@ const mmss = (ms: number) => {
   return h ? `${h}h ${m}m` : `${m}:${String(s % 60).padStart(2, '0')}`;
 };
 
-export function Hud({ world, account, purseRef, onSignOut, onGuide, onLeaders, onFestival, gfx, onGfx }: {
+export function Hud({ world, account, purseRef, onAccount, onEarnings, onGuide, onLeaders, onFestival, gfx, onGfx }: {
   gfx: '3d' | '2d';
   onGfx: () => void;
   world: World;
   account: string;
   purseRef: React.RefObject<HTMLDivElement | null>;
-  onSignOut: () => void;
+  onAccount: () => void;
+  onEarnings: () => void;
   onGuide: () => void;
   onLeaders: () => void;
   onFestival: () => void;
@@ -99,7 +100,7 @@ export function Hud({ world, account, purseRef, onSignOut, onGuide, onLeaders, o
       </button>
 
       <div className="hud-purse" ref={purseRef}>
-        <div className="coins" aria-label={`${fmt(world.player?.coins ?? 0)} MERI`}><Icon name="coin" size={24} /> {coins.toFixed(2)}</div>
+        <button className="coins" onClick={onEarnings} title="Your ledger: what you earned and what you own" aria-label={`${fmt(world.player?.coins ?? 0)} MERI. Open your ledger`}><Icon name="coin" size={24} /> {coins.toFixed(2)}</button>
         <div className="stamina" title="Stamina: each swing costs 5. It regrows over the day; bread restores 25. A bigger cottage holds more.">
           <div className="stamina-fill" style={{ width: `${((me?.stamina ?? 0) / (me?.maxStamina ?? 100)) * 100}%` }} />
           <span><Icon name="stamina" size={13} /> {Math.floor(me?.stamina ?? 0)} / {me?.maxStamina ?? 100}</span>
@@ -112,7 +113,8 @@ export function Hud({ world, account, purseRef, onSignOut, onGuide, onLeaders, o
         <button className="icon-btn" onClick={onGfx} title={gfx === '3d' ? 'Switch to the flat map (lighter on old devices)' : 'Switch to the 3D island'} aria-label={gfx === '3d' ? 'Flat map' : '3D island'}><Icon name={gfx === '3d' ? 'map' : 'island'} size={22} /></button>
         <button className={`icon-btn ${musicOn ? '' : 'off'}`} onClick={() => { setMusicOn(!musicOn); setMusic(!musicOn); }} title={musicOn ? 'Music on' : 'Music off'} aria-label="Music" aria-pressed={musicOn}><Icon name="music" size={22} /></button>
         <button className="icon-btn" onClick={() => { setMuted(!muted); setM(!muted); }} title={muted ? 'Sound off' : 'Sound on'} aria-label="Sound" aria-pressed={!muted}><Icon name={muted ? 'mute' : 'sound'} size={22} /></button>
-        <button className="icon-btn" onClick={onSignOut} title="Leave town (forgets this browser's key)" aria-label="Leave town"><Icon name="door" size={22} /></button>
+        <button className="icon-btn" onClick={onEarnings} title="Your ledger" aria-label="Your ledger"><Icon name="sack" size={22} /></button>
+        <button className="icon-btn" onClick={onAccount} title="Your account: recovery words and log out" aria-label="Your account"><Icon name="key" size={22} /></button>
       </nav>
     </header>
   );

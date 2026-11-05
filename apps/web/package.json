@@ -9,9 +9,13 @@
   },
   "dependencies": {
     "@meridian/economy": "*",
+    "@noble/curves": "2.2.0",
+    "@noble/hashes": "2.2.0",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",
     "@react-three/postprocessing": "^3.2.2",
+    "@scure/base": "2.2.0",
+    "@scure/bip39": "2.0.1",
     "near-api-js": "7.4.0",
     "postprocessing": "^6.39.6",
     "react": "19.3.1",

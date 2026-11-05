@@ -169,11 +169,12 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
   }
 
   if (req.method === 'POST' && url.pathname === '/api/join') {
-    const { name, publicKey, guildKeys = {} } = JSON.parse(body || '{}');
+    const { name, publicKey, ownerKey, guildKeys = {} } = JSON.parse(body || '{}');
     if (typeof name !== 'string' || !/^[a-z0-9][a-z0-9-]{1,18}[a-z0-9]$/.test(name)) {
       throw new HttpError(400, 'names are 3–20 characters: lowercase letters, digits and dashes');
     }
     PublicKey.fromString(publicKey); // throws on garbage
+    if (ownerKey !== undefined) PublicKey.fromString(ownerKey);
     const ip = req.socket.remoteAddress ?? '';
     const recent = (joinsByIp.get(ip) ?? []).filter(t => Date.now() - t < 3_600_000);
     if (recent.length >= 5) throw new HttpError(429, 'too many new players from here; try later');
@@ -183,7 +184,7 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
     const guildIds: string[] = world?.guilds ?? [];
     const extra = guildIds.filter(g => guildKeys[g]).map(g => ({ receiver: g, publicKey: String(guildKeys[g]), methods: ['add_proposal', 'act_proposal'] }));
     extra.forEach(k => PublicKey.fromString(k.publicKey));
-    await createPlayer(accountId, publicKey, extra);
+    await createPlayer(accountId, publicKey, extra, ownerKey);
     joinsByIp.set(ip, [...recent, Date.now()]);
     players.add(accountId, name);
     knownKeys.set(accountId, publicKey);
@@ -218,7 +219,7 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
     if (c.method === 'deliver') { gained = meri(c.value) * prog.XP.perMeriDelivered; p.progress.stats.delivered += meri(c.value); quest('deliver'); }
     if (c.method === 'bid_for_deed') { gained = prog.XP.deedBid; quest('deed'); }
     if (c.method === 'pay_guild') gained = prog.XP.guildPayIn;
-    if (c.method === 'claim_festival') gained = prog.XP.festivalClaim;
+    if (c.method === 'claim_festival') { gained = prog.XP.festivalClaim; p.progress.stats.festival = (p.progress.stats.festival ?? 0) + meri(c.value); }
     const before = prog.levelOf(p.progress.xp).level;
     p.progress.xp += gained;
     players.save();

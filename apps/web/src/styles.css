@@ -424,3 +424,39 @@ input.small { padding: 4px 8px; width: 90px; border-radius: 10px; }
   .gate-card { padding: 24px; }
   .gate .row { flex-direction: column; align-items: stretch; }
 }
+
+/* ---------- account: recovery words, log in, log out ---------- */
+.gate .tabs { margin-bottom: 4px; }
+.stack-form { display: grid; gap: 8px; }
+.stack-form label { margin: 8px 0 0; font-size: 14px; }
+.stack-form button.primary { justify-self: start; margin-top: 8px; }
+textarea { font: inherit; color: var(--ink); border: 1px solid var(--muted); background: var(--color-card); border-radius: var(--radius-input); padding: 12px 14px; resize: vertical; min-width: 0; }
+textarea:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+.phrase { list-style: none; margin: 4px 0; padding: 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 16px; border-radius: 16px; background: var(--grain), var(--color-paper-2); box-shadow: inset 0 0 0 1px var(--color-rule); font-weight: 600; font-size: 16px; }
+.phrase li { display: flex; gap: 8px; align-items: baseline; min-width: 0; overflow-wrap: anywhere; }
+.phrase li span { color: var(--muted); font-size: 12px; width: 16px; text-align: right; flex: none; }
+.check { display: flex; gap: 8px; align-items: center; font-weight: 600; font-size: 14px; cursor: pointer; }
+.check input { width: 20px; height: 20px; accent-color: var(--color-accent-deep); padding: 0; }
+.gate-card > button.primary { justify-self: start; min-height: 52px; padding: 0 24px; }
+.account-id { margin: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; }
+.account-id a, .ledger a { color: var(--color-accent-2); font-weight: 600; font-size: 14px; }
+.hidden-words { margin: 8px 0; padding: 16px; border-radius: 16px; background: var(--color-paper-3); color: var(--muted); font-size: 14px; }
+.key { display: block; margin: 8px 0; padding: 12px; border-radius: 12px; background: var(--color-paper-2); font-size: 12px; overflow-wrap: anywhere; }
+.book .panel .row, .leave .row { margin-top: 8px; flex-wrap: wrap; }
+.leave { padding-top: 8px; border-top: 1px solid var(--line); display: grid; gap: 4px; }
+.leave button { display: inline-flex; align-items: center; gap: 8px; }
+
+/* ---------- the ledger ---------- */
+button.coins { background: none; box-shadow: none; padding: 0 4px; border-radius: 12px; }
+button.coins:hover:not(:disabled) { translate: none; background: var(--color-paper-2); }
+.ledger-top { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ledger-top > div { display: grid; gap: 4px; padding: 16px; border-radius: 18px; background: var(--grain), var(--color-card); box-shadow: inset 0 0 0 1px var(--color-rule); }
+.ledger-top > div:first-child { background: var(--grain), var(--color-accent); box-shadow: 0 4px 0 0 var(--color-accent-deep); }
+.ledger-top > div:first-child .muted { color: var(--ink-2); }
+.big-figure { display: inline-flex; align-items: center; gap: 8px; font-size: 40px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
+.ledger-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ledger-table th { text-align: left; font-weight: 600; font-size: 12px; color: var(--muted); padding: 8px; }
+.ledger-table td { padding: 8px; border-top: 1px solid var(--line); }
+.ledger-table .num { text-align: right; }
+.ledger-table td.with-icon { display: flex; text-transform: capitalize; }
+@media (max-width: 40rem) { .phrase { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ledger-top { grid-template-columns: minmax(0, 1fr); } }

@@ -3,6 +3,7 @@ import { api, call, getJSON, loadConfig, me, signOut, view, type Config } from '
 import { ITEMS, fmt, type AgentReport, type Auction, type CaravanView, type Earned, type GuildView, type Item, type Job, type Me, type Params, type Player, type Shop, type SupplierInfo, type TownView, type WeekResult } from './types';
 export type { Params };
 import { Join } from './Join';
+import { AccountPanel, Earnings } from './Account';
 import { Hud, QuestTracker } from './Hud';
 import { TownMap, SPOTS, W, H, type Place } from './TownMap';
 import { PlaceDrawer, type Actions } from './Places';
@@ -80,7 +81,7 @@ export default function App() {
   const [log, setLog] = useState<LogLine[]>([]);
   const [place, setPlace] = useState<Place | null>(null);
   const [here, setHere] = useState<Place | null>(null);
-  const [modal, setModal] = useState<'guide' | 'leaders' | 'ff' | null>(null);
+  const [modal, setModal] = useState<'guide' | 'leaders' | 'ff' | 'account' | 'earnings' | null>(null);
   const [floaters, setFloaters] = useState<Floater[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextId = useRef(1);
@@ -202,10 +203,10 @@ export default function App() {
   if (!config) return <div className="loading">Opening the town gates…</div>;
   if (!account) {
     return (
-      <Join onJoined={id => {
+      <Join onJoined={(id, isNew) => {
         setAccount(id);
-        setModal('guide');
-        say(`Welcome to Meridian, ${id.split('.')[0]}. Follow the quest scroll to get started.`, 'good');
+        if (isNew) setModal('guide');
+        say(isNew ? `Welcome to Meridian, ${id.split('.')[0]}. Follow the quest scroll to get started.` : `Welcome back, ${id.split('.')[0]}.`, 'good');
       }} />
     );
   }
@@ -299,7 +300,7 @@ export default function App() {
   return (
     <div className="game">
       <Hud world={world} account={account} purseRef={purseRef}
-        onSignOut={() => { signOut(); setAccount(null); }}
+        onAccount={() => setModal('account')} onEarnings={() => setModal('earnings')}
         onGuide={() => setModal('guide')} onLeaders={() => setModal('leaders')} onFestival={() => open('festival')}
         gfx={gfx} onGfx={() => switchGfx(gfx === '3d' ? '2d' : '3d')} />
       <main className={`stage ${place ? 'with-drawer' : ''}`}>
@@ -329,6 +330,8 @@ export default function App() {
       {modal === 'ff' && <FastForward world={world} onClose={() => setModal(null)} />}
       {modal === 'guide' && <Guide onClose={() => setModal(null)} />}
       {modal === 'leaders' && <Leaders account={account} onClose={() => setModal(null)} />}
+      {modal === 'account' && <AccountPanel network={config.network} onClose={() => setModal(null)} onSignOut={() => { signOut(); setModal(null); setAccount(null); }} />}
+      {modal === 'earnings' && <Earnings world={world} account={account} network={config.network} onClose={() => setModal(null)} />}
     </div>
   );
 }

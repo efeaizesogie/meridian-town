@@ -73,8 +73,12 @@ export async function accountExists(accountId: string): Promise<boolean> {
   throw new Error(`could not check ${accountId}: ${JSON.stringify(body.error)}`);
 }
 
-/** Create `<name>.<game>`: one key that can call only the town, plus one per guild limited to proposing and voting. */
-export async function createPlayer(accountId: string, publicKey: string, extraKeys: { receiver: string; publicKey: string; methods: string[] }[] = []) {
+/**
+ * Create `<name>.<game>`: one key that can call only the town, plus one per guild limited to proposing and voting.
+ * `ownerKey` is the public half of the player's recovery phrase: a full-access key only they hold, so the
+ * account (its coins, goods and deeds) is theirs to take to any NEAR wallet.
+ */
+export async function createPlayer(accountId: string, publicKey: string, extraKeys: { receiver: string; publicKey: string; methods: string[] }[] = [], ownerKey?: string) {
   await game.signAndSendTransaction({
     receiverId: accountId,
     actions: [
@@ -82,6 +86,7 @@ export async function createPlayer(accountId: string, publicKey: string, extraKe
       actions.transfer(PLAYER_GAS_MONEY),
       actions.addFunctionCallAccessKey(PublicKey.fromString(publicKey), TOWN, [], PLAYER_KEY_ALLOWANCE),
       ...extraKeys.map(k => actions.addFunctionCallAccessKey(PublicKey.fromString(k.publicKey), k.receiver, k.methods, PLAYER_KEY_ALLOWANCE)),
+      ...(ownerKey ? [actions.addFullAccessKey(PublicKey.fromString(ownerKey))] : []),
     ],
   });
 }

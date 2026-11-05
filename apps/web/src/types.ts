@@ -163,7 +163,7 @@ export interface Me {
   cottage: { level: number; tool: number; bread: number; maxStamina: number; next: { level: number; maxStamina: number; cost: { tool: number; bread: number } } | null };
   quests: QuestView[];
   current: QuestView | null;
-  stats: { gathered: number; sold: number; delivered: number };
+  stats: { gathered: number; sold: number; delivered: number; festival?: number };
 }
 
 /** What the server says an action earned. */

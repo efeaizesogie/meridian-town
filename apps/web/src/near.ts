@@ -1,6 +1,7 @@
 // The player's side of NEAR: a key kept in this browser, view calls over RPC, and
 // transactions the player signs themselves. The key can only call the town contract.
-import { Account, FailoverRpcProvider, JsonRpcProvider, KeyPair, teraToGas } from 'near-api-js';
+import { Account, FailoverRpcProvider, JsonRpcProvider, KeyPair, PublicKey, actions, nearToYocto, teraToGas } from 'near-api-js';
+import { keyFromPhrase, newPhrase, normalise, isPhrase } from './phrase';
 
 export interface Config {
   network: string;
@@ -17,6 +18,8 @@ interface Session {
   secretKey: string;
   /** One key per guild DAO, able only to propose and vote there. */
   guildKeys?: Record<string, string>;
+  /** The recovery phrase that owns the account, kept so the player can see it again here. */
+  phrase?: string;
 }
 
 const SESSION = 'meridian.session';
@@ -45,6 +48,78 @@ function setSession(s: Session) {
 
 export const me = () => session?.accountId ?? null;
 
+/** What the player can back up: the recovery phrase (accounts made since phrases arrived) and the play key. */
+export const backup = () => (session ? { accountId: session.accountId, phrase: session.phrase ?? null, playKey: session.secretKey } : null);
+
+function save(s: Session) {
+  setSession(s);
+  try {
+    localStorage.setItem(SESSION, JSON.stringify(s));
+  } catch {}
+}
+
+const GUILD_METHODS = ['add_proposal', 'act_proposal'];
+
+/** `ada` or `ada.game.efecode.testnet` → the full account id. */
+export const accountFor = (name: string) => {
+  const n = name.trim().toLowerCase();
+  return n.includes('.') ? n : `${n}.${config.game}`;
+};
+
+async function accessKey(accountId: string, publicKey: string): Promise<any | null> {
+  for (let attempt = 0; attempt < config.rpcs.length * 2; attempt++) {
+    const url = config.rpcs[rpcIndex % config.rpcs.length];
+    try {
+      const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 'm', method: 'query', params: { request_type: 'view_access_key', finality: 'final', account_id: accountId, public_key: publicKey } }) });
+      const body = await res.json();
+      if (res.status === 429 || res.status >= 500) throw new Error('rpc busy');
+      if (body.result && !body.result.error) return body.result;
+      return null;
+    } catch {
+      rpcIndex++;
+    }
+  }
+  throw new Error('the network is busy; try again in a moment');
+}
+
+/**
+ * Log back in with a recovery phrase: prove the phrase owns the account, then have it add a fresh
+ * play key (and guild keys) for this browser. Coins, goods and deeds were on chain all along.
+ */
+export async function restoreWithPhrase(name: string, phrase: string): Promise<string> {
+  if (!isPhrase(phrase)) throw new Error('those aren’t 12 valid recovery words; check the spelling');
+  const accountId = accountFor(name);
+  const owner = keyFromPhrase(phrase);
+  const found = await accessKey(accountId, owner.publicKey);
+  if (!found || found.permission !== 'FullAccess') throw new Error(`that phrase doesn’t own ${accountId}`);
+  const play = KeyPair.fromRandom('ed25519');
+  const guildKeys = Object.fromEntries(config.guilds.map(g => [g, KeyPair.fromRandom('ed25519')]));
+  const ownerAccount = new Account(accountId, provider, owner.secretKey as any);
+  await ownerAccount.signAndSendTransaction({
+    receiverId: accountId,
+    actions: [
+      actions.addFunctionCallAccessKey(PublicKey.fromString(play.getPublicKey().toString()), config.town, [], nearToYocto('1')),
+      ...Object.entries(guildKeys).map(([g, k]) => actions.addFunctionCallAccessKey(PublicKey.fromString(k.getPublicKey().toString()), g, GUILD_METHODS, nearToYocto('1'))),
+    ],
+  });
+  save({ accountId, secretKey: play.toString(), guildKeys: Object.fromEntries(Object.entries(guildKeys).map(([g, k]) => [g, k.toString()])), phrase: normalise(phrase) });
+  return accountId;
+}
+
+/** Log back in with a saved play key (characters made before recovery phrases). */
+export async function restoreWithKey(name: string, secretKey: string): Promise<string> {
+  const accountId = accountFor(name);
+  let key: KeyPair;
+  try {
+    key = KeyPair.fromString(secretKey.trim() as any);
+  } catch {
+    throw new Error('that doesn’t look like a saved key; it starts with ed25519:');
+  }
+  if (!(await accessKey(accountId, key.getPublicKey().toString()))) throw new Error(`that key isn’t on ${accountId}`);
+  save({ accountId, secretKey: key.toString() });
+  return accountId;
+}
+
 export function signOut() {
   session = null;
   account = null;
@@ -55,6 +130,8 @@ export function signOut() {
 
 export async function join(name: string): Promise<string> {
   const key = KeyPair.fromRandom('ed25519');
+  const phrase = newPhrase();
+  const owner = keyFromPhrase(phrase);
   const guildKeys = Object.fromEntries(config.guilds.map(g => [g, KeyPair.fromRandom('ed25519')]));
   const res = await fetch('/api/join', {
     method: 'POST',
@@ -62,15 +139,13 @@ export async function join(name: string): Promise<string> {
     body: JSON.stringify({
       name,
       publicKey: key.getPublicKey().toString(),
+      ownerKey: owner.publicKey,
       guildKeys: Object.fromEntries(Object.entries(guildKeys).map(([g, k]) => [g, k.getPublicKey().toString()])),
     }),
   });
   const out = await res.json();
   if (!res.ok) throw new Error(out.error);
-  setSession({ accountId: out.accountId, secretKey: key.toString(), guildKeys: Object.fromEntries(Object.entries(guildKeys).map(([g, k]) => [g, k.toString()])) });
-  try {
-    localStorage.setItem(SESSION, JSON.stringify(session));
-  } catch {}
+  save({ accountId: out.accountId, secretKey: key.toString(), guildKeys: Object.fromEntries(Object.entries(guildKeys).map(([g, k]) => [g, k.toString()])), phrase });
   return out.accountId;
 }
 
