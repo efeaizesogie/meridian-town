@@ -18,7 +18,10 @@ import { Account, FailoverRpcProvider, JsonRpcProvider, nearToYocto, teraToGas }
 const [owner = 'efecode.testnet', town = 'town.efecode.testnet', game = 'game.efecode.testnet'] = process.argv.slice(2);
 const FACTORY = process.env.SPUTNIK_FACTORY ?? 'sputnikv2.testnet';
 const DAO_DEPOSIT = process.env.DAO_DEPOSIT ?? '6';
-const RPCS = ['https://near-testnet.drpc.org', 'https://testnet-rpc.intea.rs', 'https://test.rpc.fastnear.com'];
+const NETWORK = process.env.NEAR_NETWORK ?? 'testnet';
+const RPCS = NETWORK === 'mainnet'
+  ? ['https://rpc.mainnet.fastnear.com', 'https://rpc.mainnet.near.org']
+  : ['https://near-testnet.drpc.org', 'https://testnet-rpc.intea.rs', 'https://test.rpc.fastnear.com'];
 const DAY_NS = String(24n * 3600n * 1_000_000_000n);
 
 export const GUILDS = [
@@ -39,7 +42,7 @@ const policy = {
   bounty_forgiveness_period: DAY_NS,
 };
 
-const key = JSON.parse(readFileSync(join(homedir(), '.near-credentials', 'testnet', `${owner}.json`), 'utf8')).private_key;
+const key = JSON.parse(readFileSync(join(homedir(), '.near-credentials', NETWORK, `${owner}.json`), 'utf8')).private_key;
 const provider = new FailoverRpcProvider(RPCS.map(url => new JsonRpcProvider({ url })));
 const account = new Account(owner, provider, key);
 

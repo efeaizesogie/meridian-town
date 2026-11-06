@@ -40,7 +40,16 @@ In the simulator (60 days, 30 players, a mix of grinders, contract hunters and t
 honest player earned **20 to 55 MERI per day**, depending on how crowded the town was.
 
 The in-game **ledger** (the coin purse in the HUD) shows each player what they have earned from
-each source and what they own right now, valued at what the shops would pay.
+each source and what they own right now, valued at what the shops would pay, and in NEAR at the
+MERI/wNEAR pool on Rhea. Its **Cash out** button swaps MERI into that pool and unwraps the result
+to NEAR in the player's own account (signed with their recovery words), so earnings can leave
+the game in one step.
+
+**Townsfolk.** Three residents the game runs (Ivy, Rowan and Tamsin) gather, sell, take contracts,
+and buy bread and tools that they eat and wear out. They are ordinary accounts playing by the same
+rules and prices, shown in the game as *Around town*. Their consumption is what keeps the bakery and
+the forge short of stock, so the merchants buy, post contracts and move prices even when few
+players are online. They share in Festivals like any trader.
 
 ## 3. Where the money comes from
 

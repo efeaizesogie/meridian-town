@@ -13,9 +13,12 @@ const TOWN = process.env.TOWN_CONTRACT ?? 'town.efecode.testnet';
 const EXCHANGE = process.env.RHEA_EXCHANGE ?? 'ref-finance-101.testnet';
 const WNEAR = process.env.WNEAR ?? 'wrap.testnet';
 const FEE = 30; // 0.3%, the usual fee for a volatile pair
-const RPCS = ['https://test.rpc.fastnear.com', 'https://near-testnet.drpc.org', 'https://testnet-rpc.intea.rs'];
+const NETWORK = process.env.NEAR_NETWORK ?? 'testnet';
+const RPCS = NETWORK === 'mainnet'
+  ? ['https://rpc.mainnet.fastnear.com', 'https://rpc.mainnet.near.org']
+  : ['https://test.rpc.fastnear.com', 'https://near-testnet.drpc.org', 'https://testnet-rpc.intea.rs'];
 
-const key = JSON.parse(readFileSync(join(homedir(), '.near-credentials', 'testnet', `${owner}.json`), 'utf8')).private_key;
+const key = JSON.parse(readFileSync(join(homedir(), '.near-credentials', NETWORK, `${owner}.json`), 'utf8')).private_key;
 const provider = new FailoverRpcProvider(RPCS.map(url => new JsonRpcProvider({ url })));
 const me = new Account(owner, provider, key);
 const meri = BigInt(Math.round(Number(meriArg) * 1e6)).toString();

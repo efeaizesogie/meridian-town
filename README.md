@@ -110,6 +110,10 @@ To deploy your own: `PARENT=<you>.testnet WASM=<built wasm> ./scripts/deploy-tes
   comes from, what stops abuse, and what mainnet needs.
 - [docs/PARTNERS.md](docs/PARTNERS.md): NEAR and ecosystem partners used today (NEAR AI,
   SputnikDAO, Rhea) with contract ids, and the mainnet plan for the rest.
+- [docs/ARENA.md](docs/ARENA.md): the agent arena: run a shop with your own agent
+  (`scripts/arena-agent.ts` is a starter).
+- [docs/MAINNET.md](docs/MAINNET.md): the mainnet preview: costs and steps
+  (`scripts/deploy-mainnet.sh`).
 - [docs/DEPLOY.md](docs/DEPLOY.md): hosting the demo.
 
 ## Layout
