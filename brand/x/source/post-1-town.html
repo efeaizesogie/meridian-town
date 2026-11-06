@@ -1,0 +1,29 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="brand.css">
+<style>
+  /* 1600 x 900 */
+  .frame { background: var(--night); }
+  .shot { object-position: 50% 45%; }
+  .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(15,27,51,0) 45%, rgba(15,27,51,.55) 100%); }
+  .top { position: absolute; left: 56px; top: 48px; right: 56px; display: flex; justify-content: space-between; align-items: center; }
+  .wordmark { font-size: 30px; padding: 10px 22px 10px 12px; }
+  .wordmark svg { width: 42px; height: 42px; }
+  .panel { position: absolute; left: 56px; bottom: 56px; width: 760px; padding: 40px 44px 42px; }
+  h1 { font-size: 76px; }
+  p { margin-top: 18px; font-size: 27px; line-height: 1.3; color: var(--ink-2); }
+</style></head>
+<body><div class="frame">
+  <img class="shot" src="island-day.jpg" alt="">
+  <div class="shade"></div>
+  <div class="top">
+    <span class="chip wordmark">
+      <svg viewBox="0 0 64 64"><circle cx="32" cy="34" r="27" fill="#c9a30a"/><circle cx="32" cy="30" r="27" fill="#f2d03b" stroke="#1d2129" stroke-width="3.5"/><circle cx="32" cy="30" r="18.5" fill="none" stroke="#1d2129" stroke-width="3"/><path d="M23.5 39.5V21.5L32 31l8.5-9.5v18" fill="none" stroke="#1d2129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Meridian
+    </span>
+    <span class="chip pear" style="font-size:22px">Opening soon</span>
+  </div>
+  <div class="panel card grain">
+    <h1>A market town that runs itself.</h1>
+    <p>Six shops, six AI shopkeepers and one economy on NEAR. Gather, trade, take contracts, buy a shop. What you earn is yours.</p>
+  </div>
+</div></body></html>

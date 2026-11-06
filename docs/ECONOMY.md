@@ -46,7 +46,8 @@ to NEAR in the player's own account (signed with their recovery words), so earni
 the game in one step.
 
 **Townsfolk.** Three residents the game runs (Ivy, Rowan and Tamsin) gather, sell, take contracts,
-and buy bread and tools that they eat and wear out. They are ordinary accounts playing by the same
+carry raw goods from a glutted shop to a short one when the gap beats the tax, and buy bread and
+tools a few at a time that they eat and wear out. They are ordinary accounts playing by the same
 rules and prices, shown in the game as *Around town*. Their consumption is what keeps the bakery and
 the forge short of stock, so the merchants buy, post contracts and move prices even when few
 players are online. They share in Festivals like any trader.
@@ -66,6 +67,11 @@ stop arriving. Meridian's income has real sources and real sinks.
 **Money out, which supports the coin's value**
 - **The burn:** a missed Festival burns 5% of the treasury.
 - **Bread and tools are consumed:** eating and building destroy goods, so shops keep buying.
+- **Residents recycle the treasury:** each market day the town's households buy the bread and
+  tools sitting above a shop's target, paid from the treasury (at most 1% of it a day, at most 40
+  of each), and use them up. Tax and upkeep flow back into the shops, so the bakery and the forge
+  keep producing, their wheat, wood and ore run down, and they post contracts and raise their bids.
+  Residents never buy below target, and their trade doesn't count toward the Festival.
 - **The spread:** a buy-and-sell round trip costs about 22%, so churning coin through shops loses money.
 
 New coin appears only at a Festival, and only when the town as a whole traded more than its

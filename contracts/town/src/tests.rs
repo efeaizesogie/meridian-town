@@ -236,9 +236,10 @@ fn festival_miss_burns_treasury() {
     }
     let w = &t.get_weeks(None, None)[0];
     assert!(!w.hit);
-    // Upkeep arrives daily before the burn: 6 shops × 25 × 7 days.
-    let before_burn = treasury + 6 * 25 * 7 * MICRO;
-    assert_eq!(w.burned.0, before_burn * 500 / 10_000);
+    // The burn is 5% of the treasury as it stood at the Festival (upkeep in, residents' spending out).
+    let after = t.coin_of(&town_id());
+    assert!(after + w.burned.0 > treasury, "upkeep outpaces the residents' spending");
+    assert_eq!(w.burned.0, (after + w.burned.0) * 500 / 10_000);
     assert_eq!(t.coin.total_supply, 59_000 * MICRO - w.burned.0);
     assert_conserved(&t, &[]);
 }
@@ -654,4 +655,47 @@ fn strangers_cant_move_the_festival_floor() {
     let mut t = genesis();
     as_("mallory.testnet", T0);
     t.set_target_floor(U128(300 * MICRO));
+}
+
+#[test]
+fn residents_buy_surplus_bread_and_tools_from_the_treasury() {
+    let mut t = genesis();
+    let (baker, smith) = (sub("baker"), sub("smith"));
+    let bread_target = t.shop("baker").target[Item::Bread.idx()];
+    let tool_target = t.shop("smith").target[Item::Tool.idx()];
+    t.mint_items(&baker, Item::Bread, bread_target * 2, "test");
+    t.mint_items(&smith, Item::Tool, tool_target * 2, "test");
+    let (bread0, tools0) = (t.items_of(&baker, Item::Bread), t.items_of(&smith, Item::Tool));
+    let (treasury0, baker0, smith0) = (t.coin_of(&town_id()), t.coin_of(&baker), t.coin_of(&smith));
+
+    t.resident_demand();
+
+    let (bread1, tools1) = (t.items_of(&baker, Item::Bread), t.items_of(&smith, Item::Tool));
+    assert!(bread1 < bread0 && bread1 >= bread_target, "residents eat surplus bread, never below target");
+    assert!(tools1 < tools0 && tools1 >= tool_target, "residents use surplus tools, never below target");
+    let spent = treasury0 - t.coin_of(&town_id());
+    assert!(spent > 0 && spent <= treasury0 / 100, "within 1% of the treasury");
+    assert_eq!(spent, (t.coin_of(&baker) - baker0) + (t.coin_of(&smith) - smith0), "the treasury paid the shops");
+    assert_conserved(&t, &[]);
+}
+
+#[test]
+fn residents_leave_a_shop_at_or_below_target_alone() {
+    let mut t = genesis();
+    let baker = sub("baker");
+    let target = t.shop("baker").target[Item::Bread.idx()];
+    let have = t.items_of(&baker, Item::Bread);
+    if have > target {
+        t.burn_items(&baker, Item::Bread, have - target, "test");
+    }
+    let smith = sub("smith");
+    let tool_target = t.shop("smith").target[Item::Tool.idx()];
+    let tools = t.items_of(&smith, Item::Tool);
+    if tools > tool_target {
+        t.burn_items(&smith, Item::Tool, tools - tool_target, "test");
+    }
+    let treasury = t.coin_of(&town_id());
+    t.resident_demand();
+    assert_eq!(t.coin_of(&town_id()), treasury);
+    assert_eq!(t.items_of(&baker, Item::Bread), target.min(have));
 }

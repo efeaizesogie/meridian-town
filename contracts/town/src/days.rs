@@ -16,6 +16,11 @@ use crate::{events, sub, PlayerWeek, Town, TownExt, WeekResult};
 pub(crate) const ADVANCE_DAYS_PER_CALL: u32 = 2;
 pub(crate) const ACTION_DAYS_PER_CALL: u32 = 1;
 
+/// Residents spend at most this share of the treasury a day (1%), and buy at most this many
+/// units of each good. Upkeep alone (25 MERI a shop a day) brings in more than this spends.
+pub(crate) const RESIDENT_BUDGET_BPS: u128 = 100;
+pub(crate) const RESIDENT_MAX_UNITS: u64 = 40;
+
 #[near]
 impl Town {
     /// Pay out the caller's share of every finished Festival they traded in.
@@ -63,6 +68,7 @@ impl Town {
 
     fn end_day(&mut self) {
         let day = self.processed_days;
+        self.resident_demand();
         self.produce("smith", &[Item::Wood, Item::Ore], Item::Tool, self.params.blacksmith_capacity);
         self.produce("baker", &[Item::Wheat], Item::Bread, self.params.baker_capacity);
         self.settle_caravan(day);
@@ -70,6 +76,42 @@ impl Town {
         self.collect_upkeep(day);
         self.pay_dividends();
         self.open_caravan(day + 1);
+    }
+
+    /// Residents (RULES.md §10): the town's households buy the bread and tools that sit unsold
+    /// above a shop's target, paid from the treasury, and use them up. This recycles the trade
+    /// tax and upkeep back into the shops, so the bakery and the forge keep producing, their
+    /// inputs run down, and they post contracts and raise their bids for raw goods. They never
+    /// buy below target, so a shop that is short is never emptied, and their trade doesn't
+    /// count toward the Festival (only players' does).
+    pub(crate) fn resident_demand(&mut self) {
+        let treasury = env::current_account_id();
+        let mut budget = self.coin_of(&treasury) * RESIDENT_BUDGET_BPS / 10_000;
+        for (shop_id, item, memo) in [("baker", Item::Bread, "eaten by residents"), ("smith", Item::Tool, "used by residents")] {
+            let s = self.shop(shop_id);
+            if !s.open {
+                continue;
+            }
+            let acct = sub(shop_id);
+            let (base, target) = (self.params.base(item), s.target[item.idx()]);
+            let mut stock = self.items_of(&acct, item);
+            let (mut n, mut cost) = (0u64, 0u128);
+            while stock > target && n < RESIDENT_MAX_UNITS {
+                let price = crate::pricing::ask(base, stock, target);
+                if price == 0 || cost + price > budget {
+                    break;
+                }
+                cost += price;
+                stock -= 1;
+                n += 1;
+            }
+            if n == 0 {
+                continue;
+            }
+            budget -= cost;
+            self.move_coin(&treasury, &acct, cost, "residents");
+            self.burn_items(&acct, item, n, memo);
+        }
     }
 
     fn produce(&mut self, shop_id: &str, inputs: &[Item], output: Item, capacity: u64) {

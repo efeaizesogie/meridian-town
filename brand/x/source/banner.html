@@ -1,0 +1,35 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="brand.css">
+<style>
+  /* 1500 x 500. X puts the profile picture over the lower left, so the words sit above it. */
+  .frame { background: var(--paper); }
+  .scene { position: absolute; top: 0; right: 0; bottom: 0; width: 62%; overflow: hidden;
+    clip-path: path("M 150 0 C 60 150, 60 350, 0 500 L 1000 500 L 1000 0 Z"); }
+  .scene img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 40%; }
+  .edge { position: absolute; top: 0; right: 0; bottom: 0; width: 62%; pointer-events: none; }
+  .words { position: absolute; left: 76px; top: 64px; width: 600px; }
+  .wordmark { font-size: 34px; }
+  .wordmark svg { width: 46px; height: 46px; }
+  h1 { font-size: 78px; margin-top: 30px; }
+  h1 em { font-style: normal; background: linear-gradient(transparent 62%, var(--pear) 62%, var(--pear) 92%, transparent 92%); }
+  .tags { display: flex; gap: 12px; margin-top: 30px; font-size: 19px; }
+  .soon { position: absolute; right: 44px; bottom: 40px; font-size: 22px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--mint-deep); box-shadow: 0 0 0 4px #cfeedd; }
+</style></head>
+<body><div class="frame grain">
+  <div class="scene"><img src="festival-night.jpg" alt=""></div>
+  <svg class="edge" viewBox="0 0 930 500" preserveAspectRatio="none"><path d="M 150 0 C 60 150, 60 350, 0 500" fill="none" stroke="#1d2129" stroke-width="5"/></svg>
+  <div class="words">
+    <div class="wordmark">
+      <svg viewBox="0 0 64 64"><circle cx="32" cy="34" r="27" fill="#c9a30a"/><circle cx="32" cy="30" r="27" fill="#f2d03b" stroke="#1d2129" stroke-width="3.5"/><circle cx="32" cy="30" r="18.5" fill="none" stroke="#1d2129" stroke-width="3"/><path d="M23.5 39.5V21.5L32 31l8.5-9.5v18" fill="none" stroke="#1d2129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Meridian
+    </div>
+    <h1>A market town<br>that <em>runs itself.</em></h1>
+    <div class="tags">
+      <span class="chip">AI shopkeepers</span>
+      <span class="chip">A real economy</span>
+      <span class="chip pear">Built on NEAR</span>
+    </div>
+  </div>
+  <div class="soon chip"><span class="dot"></span> Coming to mainnet</div>
+</div></body></html>
