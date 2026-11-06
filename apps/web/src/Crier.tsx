@@ -1,7 +1,7 @@
 // The town crier: what just happened in Meridian (contracts, closures, records, shocks, the
 // Festival), plain headlines about the market, a price chart with shocks shaded, the daily
 // chest, and the deed holders' perks (name and decorate a shop, vote on next week's event).
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Act, World } from './App';
 import { api } from './near';
 import { ITEMS, KEEPERS, type Item } from './types';
@@ -57,6 +57,34 @@ export function CrierTicker({ world, feed, onOpen, showShock = true }: { world: 
         )}
       </button>
     </div>
+  );
+}
+
+/**
+ * On the full-screen map, news comes up on its own: each new crier item shows for a few seconds
+ * at the bottom of the screen, then gets out of the way.
+ */
+export function CrierPop({ feed, onOpen }: { feed: FeedView | null; onOpen: () => void }) {
+  const newest = feed?.items[0];
+  const seen = useRef<number | null>(null);
+  const [shown, setShown] = useState<FeedItem | null>(null);
+  useEffect(() => {
+    if (!newest) return;
+    // The first read is old news; only items that arrive while you play pop up.
+    if (seen.current !== null && newest.id !== seen.current) {
+      setShown(newest);
+      const t = setTimeout(() => setShown(null), 7000);
+      seen.current = newest.id;
+      return () => clearTimeout(t);
+    }
+    seen.current = newest.id;
+  }, [newest?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!shown) return null;
+  return (
+    <button key={shown.id} className="crier-pop" onClick={onOpen} aria-live="polite">
+      <span className="crier-tag"><Icon name="crier" size={16} /> Town crier</span>
+      <span className="crier-text"><Icon name={KIND_ICON[shown.kind] ?? 'scroll'} size={16} /> {shown.text}</span>
+    </button>
   );
 }
 

@@ -877,3 +877,87 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
 .judge-social article { display: grid; gap: 6px; padding: 14px; border-radius: 16px; background: var(--color-paper); box-shadow: inset 0 0 0 1px var(--color-rule); }
 .judge-social h3 { margin: 0; }
 @media (max-width: 720px) { .tour-stats { grid-template-columns: 1fr; } .tool-list li { grid-template-columns: auto 1fr; } }
+
+/* ---------- the folded menu (every screen but phones, which use the tab bar) ---------- */
+.menu-toggle { display: none; }
+.log-toggle .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-accent-3); margin-left: 2px; }
+.game:not(.immersive) .log-toggle { display: none; }
+@media (min-width: 721px) {
+  .game:not(.phone) .hud { position: sticky; }
+  .game:not(.phone) .menu-toggle { display: inline-flex; align-items: center; gap: 6px; width: auto; padding: 0 14px; justify-self: end; }
+  .game:not(.phone) .menu-toggle span { font-size: 14px; font-weight: 600; }
+  .game:not(.phone) .menu-toggle.on { background: var(--grain), var(--color-accent); }
+  .game:not(.phone) .hud-menu { display: none; position: absolute; top: calc(100% + 8px); right: 16px; z-index: 25; flex-direction: column; gap: 4px; min-width: 230px; padding: 8px; border-radius: 20px; background: var(--grain), var(--color-card); box-shadow: var(--shadow-card), inset 0 0 0 1px var(--color-rule); animation: menu-in 0.16s var(--ease-snap); }
+  .game:not(.phone) .hud-menu.open { display: flex; }
+  .game:not(.phone) .hud-menu .icon-btn { width: 100%; height: 44px; display: flex; justify-content: flex-start; gap: 12px; padding: 0 12px; --edge: 0px; box-shadow: none; background: transparent; border-radius: 12px; }
+  .game:not(.phone) .hud-menu .icon-btn:hover { background: var(--color-paper-2); }
+  .game:not(.phone) .hud-menu .icon-btn::after { content: attr(aria-label); font-size: 14px; font-weight: 600; color: var(--ink); }
+  .game:not(.phone) .hud-menu .icon-btn.off { opacity: 1; }
+  .game:not(.phone) .hud-menu .icon-btn.off::after { color: var(--muted); }
+  @keyframes menu-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+}
+
+/* ---------- immersive desktop: the island fills the window, everything else floats ---------- */
+.game.immersive .stage { position: fixed; inset: 0; display: block; }
+.game.immersive .map-wrap { position: absolute; inset: 0; padding: 0; display: block; }
+.game.immersive .world3d { height: 100dvh; min-height: 0; border-radius: 0; box-shadow: none; }
+.game.immersive .floaters { inset: 0; }
+.game.immersive .hud {
+  position: fixed; top: 12px; left: 12px; right: 12px; z-index: 12; padding: 0; gap: 10px;
+  background: none; box-shadow: none; pointer-events: none;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto; align-items: start;
+}
+.game.immersive .hud > * { pointer-events: auto; }
+.game.immersive .hud-id, .game.immersive .hud-clock, .game.immersive .hud-purse, .game.immersive .hud-festival, .game.immersive .menu-toggle {
+  background: var(--grain), color-mix(in oklab, var(--color-card) 90%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 18px; box-shadow: var(--shadow-card), inset 0 0 0 1px var(--color-rule);
+}
+.game.immersive .hud-id, .game.immersive .hud-clock, .game.immersive .hud-purse { padding: 8px 14px; min-height: 58px; }
+.game.immersive .hud-id .avatar { width: 38px; height: 38px; }
+.game.immersive .hud-festival { justify-self: center; width: min(360px, 100%); min-height: 58px; }
+.game.immersive .menu-toggle { height: 58px; padding: 0 18px; }
+.game.immersive .hud-menu { right: 0; }
+.game.immersive .hud-purse { display: grid; gap: 2px; min-width: 150px; }
+.game.immersive .hud-purse .coins { justify-content: flex-end; font-size: 20px; }
+.game.immersive .quest { top: 86px; left: 12px; width: 300px; cursor: pointer; }
+.game.immersive .quest:not(.open) p { display: none; }
+.game.immersive .quest:not(.open) strong { margin-bottom: 8px; }
+.game.immersive .map-tools { top: 86px; right: 12px; transition: right 0.22s var(--ease-snap); }
+.game.immersive .stage.with-drawer .map-tools { right: calc(min(440px, 40vw) + 24px); }
+.game.immersive .map-tools button { background: var(--grain), color-mix(in oklab, var(--color-card) 92%, transparent); }
+.game.immersive .map-tools .chest-btn.ready { background: var(--grain), var(--color-accent); }
+.game.immersive .map-shock { bottom: 24px; }
+.game.immersive .stage.with-drawer .map-shock { left: calc((100% - min(440px, 40vw) - 24px) / 2); }
+.game.immersive .drawer {
+  position: fixed; top: 86px; right: 12px; bottom: 12px; width: min(440px, 40vw); max-height: none; z-index: 15;
+  border-radius: 24px; overflow: hidden; box-shadow: var(--shadow-card), inset 0 0 0 1px var(--color-rule);
+  animation: drawer-in 0.24s var(--ease-snap);
+}
+@keyframes drawer-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+.game.immersive .ticker {
+  position: fixed; left: 12px; bottom: 12px; z-index: 14; width: min(460px, calc(100vw - 24px)); max-width: none; max-height: 62dvh; overflow: auto;
+  padding: 12px 14px 14px; display: grid; gap: 10px; border-radius: 22px;
+  background: var(--grain), color-mix(in oklab, var(--color-paper) 94%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-card), inset 0 0 0 1px var(--color-rule);
+  opacity: 0; visibility: hidden; transform: translateY(12px); transition: opacity 0.18s, transform 0.22s var(--ease-snap), visibility 0s 0.22s;
+}
+.game.immersive.log-open .ticker { opacity: 1; visibility: visible; transform: none; transition: opacity 0.18s, transform 0.22s var(--ease-snap); }
+.game.immersive .ticker .crier-strip { margin: 0; }
+.game.immersive .ticker ul { max-height: 30dvh; }
+.log-head { display: flex; justify-content: space-between; align-items: center; font-size: 16px; }
+.crier-pop { all: unset; cursor: pointer; position: absolute; left: 12px; bottom: 24px; z-index: 13; max-width: min(560px, calc(100vw - 48px)); display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 18px; font-size: 14px;
+  background: var(--grain), color-mix(in oklab, var(--color-card) 94%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-card), inset 0 0 0 1px var(--color-rule); animation: crier-pop 7s var(--ease-snap) forwards; }
+.crier-pop .crier-text { white-space: normal; }
+@keyframes crier-pop { 0% { opacity: 0; transform: translateY(16px); } 6%, 90% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .crier-pop { animation: none; } }
+.game.immersive .map-wrap.flat { display: flex; justify-content: center; align-items: center; padding: 84px 12px 12px; }
+.game.immersive .map-wrap.flat .town { max-height: calc(100dvh - 100px); }
+.game.immersive .map-wrap.flat .quest { position: absolute; display: block; width: 300px; }
+.game.immersive .map-wrap.flat .map-tools { position: absolute; }
+.game.immersive .toasts { top: 86px; }
+@media (max-width: 1100px) {
+  .game.immersive .hud { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+  .game.immersive .hud-festival { grid-column: auto; order: 0; }
+}

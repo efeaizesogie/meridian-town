@@ -8,7 +8,7 @@ import { Hud, QuestTracker } from './Hud';
 import { nextStep } from './quest';
 import { TownMap, SPOTS, W, H, type Place, type View } from './TownMap';
 import { TabBar, type Tab } from './Tabs';
-import { buzz, usePhone } from './phone';
+import { buzz, usePhone, useWide } from './phone';
 import { PlaceDrawer, type Actions } from './Places';
 import { TownLog } from './Panels';
 import { FastForward } from './FastForward';
@@ -19,7 +19,7 @@ import { Icon } from './Icon';
 import { TownBooks, type BooksTab } from './Books';
 import { Judge } from './Judge';
 import { EventCard } from './Places';
-import { ChestButton, CrierTicker, ShockBanner, useFeed, type ShockView, type ShopStyle } from './Crier';
+import { ChestButton, CrierPop, CrierTicker, ShockBanner, useFeed, type ShockView, type ShopStyle } from './Crier';
 import { toolFor } from './Market';
 
 const savedGfx = (): '3d' | '2d' => {
@@ -107,9 +107,13 @@ export default function App() {
   // Looking around before picking a name: the live town, read-only.
   const [guest, setGuest] = useState(false);
   const feed = useFeed();
+  // Wide screens: the map fills the window; the log opens on demand.
+  const wide = useWide();
+  const [logOpen, setLogOpen] = useState(false);
   const [floaters, setFloaters] = useState<Floater[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const phone = usePhone();
+  const immersive = wide && !phone;
   const [mapView, setMapView] = useState<View | null>(null);
   const nextId = useRef(1);
   const purseRef = useRef<HTMLDivElement | null>(null);
@@ -373,7 +377,7 @@ export default function App() {
   };
 
   return (
-    <div className={`game ${phone ? 'phone' : ''}`}>
+    <div className={`game ${phone ? 'phone' : ''} ${immersive ? 'immersive' : ''} ${logOpen ? 'log-open' : ''}`}>
       <Hud world={world} account={account} purseRef={purseRef}
         onAccount={() => setModal('account')} onEarnings={() => setModal('earnings')}
         onGuide={() => setModal('guide')} onLeaders={() => setModal('leaders')} onFestival={() => open('festival')} onBooks={() => openBooks()}
@@ -396,10 +400,20 @@ export default function App() {
               play('level');
               celebrate({ xp: r.xp, levelUp: r.levelUp }, null);
             }} />
+            <button className="log-toggle" aria-expanded={logOpen} onClick={() => setLogOpen(o => !o)} title="Your trades, the town crier and who’s about">
+              <Icon name="scroll" /> Log{log.length > 0 && !logOpen ? <span className="dot" aria-hidden /> : null}
+            </button>
             <button onClick={() => setModal('ff')} title="Replay the next market week in a minute"><Icon name="forward" /> Fast-forward</button>
           </div>
+          {immersive && !logOpen && <CrierPop feed={feed} onOpen={() => openBooks('crier')} />}
         </div>
-        <div className="ticker">
+        <div className="ticker" aria-hidden={immersive && !logOpen}>
+          {immersive && (
+            <header className="log-head">
+              <strong>Town log</strong>
+              <button className="link" onClick={() => setLogOpen(false)} aria-label="Close the log"><Icon name="close" /></button>
+            </header>
+          )}
           <CrierTicker world={world} feed={feed} onOpen={() => openBooks('crier')} showShock={false} />
           <TownLog log={log} busy={busy} />
           {(world.townsfolk?.length ?? 0) > 0 && (

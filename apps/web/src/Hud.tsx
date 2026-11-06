@@ -59,6 +59,16 @@ export function Hud({ world, account, purseRef, onAccount, onEarnings, onGuide, 
   const now = useNow();
   const [muted, setM] = useState(isMuted());
   const [musicOn, setMusic] = useState(isMusicOn());
+  // The menu stays folded until asked for; Escape or a click elsewhere folds it again.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
+    const away = (e: PointerEvent) => !(e.target as HTMLElement).closest('.hud-menu, .menu-toggle') && setMenuOpen(false);
+    window.addEventListener('keydown', esc);
+    window.addEventListener('pointerdown', away);
+    return () => { window.removeEventListener('keydown', esc); window.removeEventListener('pointerdown', away); };
+  }, [menuOpen]);
   const { genesisMs, dayMs, skewMs } = world.clock;
   const elapsed = now - skewMs - genesisMs;
   const day = Math.floor(elapsed / dayMs);
@@ -109,7 +119,10 @@ export function Hud({ world, account, purseRef, onAccount, onEarnings, onGuide, 
         </div>
       </div>
 
-      <nav className="hud-menu" aria-label="Game menu">
+      <button className={`icon-btn menu-toggle ${menuOpen ? 'on' : ''}`} aria-expanded={menuOpen} aria-controls="game-menu" onClick={() => setMenuOpen(o => !o)} title="Menu">
+        <Icon name={menuOpen ? 'close' : 'more'} size={22} /><span>Menu</span>
+      </button>
+      <nav id="game-menu" className={`hud-menu ${menuOpen ? 'open' : ''}`} aria-label="Game menu" onClick={e => (e.target as HTMLElement).closest('button') && setMenuOpen(false)}>
         <button className="icon-btn" onClick={onGuide} title="How to play" aria-label="How to play"><Icon name="book" size={22} /></button>
         <button className="icon-btn" onClick={onLeaders} title="Leaderboard" aria-label="Leaderboard"><Icon name="rosette" size={22} /></button>
         <button className="icon-btn" onClick={onBooks} title="The town’s books: where every coin is, records, and your marks" aria-label="Town books"><Icon name="scroll" size={22} /></button>

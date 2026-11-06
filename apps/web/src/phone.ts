@@ -17,6 +17,19 @@ export function usePhone() {
   return phone;
 }
 
+/** Wide screens get the immersive layout: the map fills the window and the rest floats over it. */
+export function useWide() {
+  const Q = '(min-width: 861px)';
+  const [wide, setWide] = useState(() => typeof matchMedia !== 'undefined' && matchMedia(Q).matches);
+  useEffect(() => {
+    const mq = matchMedia(Q);
+    const on = () => setWide(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return wide;
+}
+
 /** A short vibration on phones that support it (Android); silent when sound is off. */
 export function buzz(pattern: number | number[]) {
   if (isMuted()) return;
