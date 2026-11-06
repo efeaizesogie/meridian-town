@@ -91,6 +91,15 @@ export function AccountPanel({ network, onClose, onSignOut }: { network: string;
           </section>
         )}
 
+        <section className="panel invite">
+          <h3 className="section-title">Bring a friend</h3>
+          <p className="hint">The town gets livelier with every player, and the Festival needs the whole town trading. Send them the link; they start free, no wallet needed.</p>
+          <div className="row">
+            <Copy text={`${location.origin}/`} label="Copy the invite link" />
+            <a className="text-link" href={`https://x.com/intent/post?text=${encodeURIComponent(`I run a stall in Meridian, a market town on NEAR where the shopkeepers are AI agents. Come and trade: ${location.origin}/`)}`} target="_blank" rel="noreferrer">Share on X</a>
+          </div>
+        </section>
+
         <section className="leave">
           <h3 className="section-title">Log out</h3>
           <p className="hint">This browser forgets your keys. Your progress stays on chain, and your {b.phrase ? '12 words' : 'saved key'} bring you back.</p>

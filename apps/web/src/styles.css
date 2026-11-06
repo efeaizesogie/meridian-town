@@ -503,3 +503,13 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
 .my-shop { display: grid; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line); }
 .my-shop .row { flex-wrap: wrap; }
 .agent-input { width: 200px !important; }
+
+.invite .row { flex-wrap: wrap; gap: 16px; }
+.invite .text-link { color: var(--color-accent-2); font-weight: 600; font-size: 14px; }
+
+/* phones: smaller place names; price tags only for the place you are looking at */
+@media (max-width: 720px) {
+  .label3d span { font-size: 11px; padding: 1px 7px; }
+  .label3d b { display: none; }
+  .label3d.on b { display: block; }
+}

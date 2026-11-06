@@ -205,6 +205,16 @@ mark { background: var(--mark); color: inherit; box-decoration-break: clone; -we
 @media (max-width: 60rem) { .earn-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .keep { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 40rem) { .earn-grid { grid-template-columns: minmax(0, 1fr); } .earn-grid li { min-height: 0; } }
 
+/* ---------- live in town: real numbers from the game server ---------- */
+.live { padding-block: var(--section-gap-s); }
+.live-head { display: grid; gap: var(--space-md); margin-bottom: var(--space-xl); }
+.live-grid { margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap-columns); }
+.live-grid div { display: grid; gap: var(--space-2xs); padding: var(--space-lg); border-radius: var(--radius-card); background: var(--grain), var(--fibre), var(--color-card); box-shadow: inset 0 0 0 1px var(--color-rule), 0 5px 0 0 var(--color-edge); }
+.live-grid dt { font-size: var(--text-sm); color: var(--color-ink-2); }
+.live-grid dd { margin: 0; font-size: var(--text-display-s); font-weight: 600; letter-spacing: var(--tracking-display); line-height: 1; font-variant-numeric: tabular-nums; }
+.live-grid small { font-size: var(--text-sm); color: var(--color-muted); }
+@media (max-width: 60rem) { .live-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 /* ---------- what it takes: Rows ---------- */
 .needs, .built { border-top: var(--rule-hair) solid var(--color-rule); }
 .rows { margin: 0; display: grid; }
@@ -227,6 +237,8 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
 .foot-links span:last-child { margin-left: auto; }
 @media (max-width: 40rem) { .foot-links span:last-child { margin-left: 0; } }
 </style>
+</head>
+<body>
 
 <header class="nav">
   <div class="container">
@@ -267,6 +279,21 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
         </div>
         <figcaption class="board-note">What the shops paid on market day 190, in MERI coins.</figcaption>
       </figure>
+    </div>
+  </section>
+
+  <section class="live" aria-labelledby="live-title">
+    <div class="container">
+      <div class="live-head">
+        <h2 id="live-title">Live in town.</h2>
+        <p class="lead" data-live-note>Open the game to see the market move.</p>
+      </div>
+      <dl class="live-grid">
+        <div><dt>Players</dt><dd data-stat="players">…</dd><small data-stat="active">signed up</small></div>
+        <div><dt>This week’s trade</dt><dd data-stat="week">…</dd><small data-stat="target">of the Festival target</small></div>
+        <div><dt>Open contracts</dt><dd data-stat="contracts">…</dd><small>on the Notice Board</small></div>
+        <div><dt>1 MERI</dt><dd data-stat="price">…</dd><small>NEAR, on Rhea</small></div>
+      </dl>
     </div>
   </section>
 
@@ -403,5 +430,20 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
     </div>
   </div>
 </footer>
+
+<script>
+  // Live numbers from the game server; the page reads fine without them.
+  fetch('/api/stats').then(r => r.ok ? r.json() : null).then(st => {
+    if (!st) return;
+    const set = (k, v) => { const el = document.querySelector(`[data-stat="${k}"]`); if (el) el.textContent = v; };
+    set('players', String(st.players));
+    set('active', `${st.activeToday} active today, ${st.joinedThisWeek} new this week`);
+    if (st.week) { set('week', `${Math.round(st.week.traded)}`); set('target', `of ${Math.round(st.week.target)} MERI for the Festival`); }
+    set('contracts', String(st.openContracts));
+    if (st.meriInNear != null) set('price', st.meriInNear.toFixed(4));
+    const note = document.querySelector('[data-live-note]');
+    if (note) note.textContent = `${st.festivalsHit} of ${st.festivals} Festivals held so far. Three townsfolk the game runs keep the market moving between players.`;
+  }).catch(() => {});
+</script>
 </body>
 </html>

@@ -6,7 +6,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PublicKey } from 'near-api-js';
-import { GAME, NETWORK, RPCS, TOWN, accountExists, advanceTown, createPlayer, gatherBatch, hasKey, verifyTownCall, verifyUseItem, view, viewOn, type GatherOrder } from './chain.ts';
+import { GAME, NETWORK, RPCS, TOWN, accountExists, advanceTown, createPlayer, gatherBatch, hasKey, verifyTownCall, verifyUseItem, provider, view, viewOn, type GatherOrder } from './chain.ts';
 import * as players from './players.ts';
 import * as prog from './progression.ts';
 import { PERSONAS, agentAccount, getReports, startAgents } from './agents.ts';
@@ -70,6 +70,17 @@ setTimeout(() => readMarket().catch(() => {}), 3_000).unref();
 // The first two guilds were chartered with a policy whose members couldn't vote on function
 // calls (Sputnik's label is `call`); they stay registered until the owner calls unregister_guild.
 const RETIRED_GUILDS = new Set((process.env.RETIRED_GUILDS ?? 'hammer-guild.sputnikv2.testnet,harvest-guild.sputnikv2.testnet').split(',').filter(Boolean));
+
+// ---------- funds: warn before the game account runs dry (it pays sign-ups and the keeper) ----------
+const LOW_FUNDS_NEAR = Number(process.env.LOW_FUNDS_NEAR ?? 1);
+let gameNear: number | null = null;
+async function readFunds() {
+  const a = await provider.viewAccount({ accountId: GAME });
+  gameNear = Number(BigInt(a.amount) / 10n ** 18n) / 1e6;
+  if (gameNear < LOW_FUNDS_NEAR) console.error(`LOW FUNDS: ${GAME} has ${gameNear.toFixed(3)} NEAR left. Top it up, or sign-ups and the town clock will stop.`);
+}
+setInterval(() => readFunds().catch(() => {}), 120_000).unref();
+setTimeout(() => readFunds().catch(() => {}), 5_000).unref();
 
 let lastSlowRead = 0;
 let guildViews: GuildView[] = [];
@@ -193,7 +204,26 @@ const joinsByIp = new Map<string, number[]>();
 async function route(req: IncomingMessage, url: URL, body: string): Promise<unknown> {
   const R = players.RULES;
   if (req.method === 'GET' && url.pathname === '/api/health') {
-    return { ok: !!world, town: TOWN, readAt: world?.readAt ?? null, uptimeS: Math.round(process.uptime()) };
+    // gameNear: what the game account has left for sign-ups, the keeper and gas top-ups.
+    return { ok: !!world, town: TOWN, readAt: world?.readAt ?? null, uptimeS: Math.round(process.uptime()), gameNear, lowFunds: gameNear !== null && gameNear < LOW_FUNDS_NEAR };
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/stats') {
+    // Real numbers for the welcome page: who plays, and whether the town is trading.
+    const all = players.all();
+    const day = 24 * 3600_000;
+    const weeks = world?.weeks ?? [];
+    return {
+      players: all.length,
+      activeToday: all.filter(p => Date.now() - p.staminaAt < day).length,
+      joinedThisWeek: all.filter(p => Date.now() - p.joinedAt < 7 * day).length,
+      week: world ? { traded: Number(world.town.week_counted) / 1e6, target: Number(world.town.week_target) / 1e6, streak: world.town.streak } : null,
+      festivalsHit: weeks.filter((w: any) => w.hit).length,
+      festivals: weeks.length,
+      openContracts: world?.jobs.length ?? 0,
+      meriInNear: market?.nearPerMeri ?? null,
+      townsfolk: getTownsfolk().length,
+    };
   }
 
   if (req.method === 'GET' && url.pathname === '/api/config') {
