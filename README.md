@@ -11,18 +11,18 @@ recovery words that make the account yours). Built with NEAR AI, SputnikDAO and 
 [docs/PARTNERS.md](docs/PARTNERS.md). How players earn, and where that money comes from:
 [docs/ECONOMY.md](docs/ECONOMY.md).
 
-### For judges: five minutes
+### For judges: the Inspector’s Desk, five minutes
 
 Open **[/judge](https://meridian-town-production.up.railway.app/judge)**. One click makes you a
 real NEAR account, then every game action (gather, sell, buy and eat, fill a contract, bid for a
 deed, claim a Festival share) is a button that sends a real testnet transaction and links to it.
-The same page lets you stress the economy in fast-forward (flood the wheat market, strip the
-Fields, bankrupt the Bakery, skip to the Festival), shows the AI shopkeepers' accounts and their
+The same page lets you ask *what if?* in fast-forward (a grain barge docks, drought takes the
+Fields, Oswin’s till runs dry, jump to Festival night), shows the AI shopkeepers' accounts and their
 latest transactions, and opens the town's books: where every MERI sits and what each week minted
 or burned. Prefer to look before signing up? *Look around the town first* on the sign-in screen
 opens the live 3D town read-only.
 
-What's new for players: a **timing ring** on every swing (tap as the rings meet for bonus XP),
+What's new for players: a **swing meter** on every swing (stop your tool on the gold notch for bonus XP),
 a **weekly town event** that moves real demand (the shopkeepers raise their targets for one good,
 so it pays more and the townsfolk go after it), **twelve marks of the trade** to collect (the
 full set raises your stamina cap), and **town records** checked against on-chain transactions.

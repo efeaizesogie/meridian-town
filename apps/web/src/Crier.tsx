@@ -111,7 +111,7 @@ export function CrierPanel({ feed, explorer }: { feed: FeedView | null; explorer
   return (
     <div className="crier-panel">
       <section>
-        <h3 className="section-title">What stands out</h3>
+        <h3 className="section-title">Talk of the market</h3>
         <ul className="standout">{feed.standout.map((s, i) => <li key={i}>{s}</li>)}</ul>
       </section>
       <PriceChart />
@@ -174,10 +174,10 @@ function PriceChart() {
     <figure className="chart crier-chart">
       <figcaption>
         <strong>Prices over the last day</strong>
-        <span className="muted">Each good against where it started the day (1× = unchanged). Raw goods show what shops pay you; bread and tools what you pay. Shaded: a market shock.</span>
+        <span className="muted">Each good against where it started the day (1× = unchanged). Raw goods show what shops pay you; bread and tools what you pay. A red pennant marks where a market shock began; its rope runs as long as it lasted.</span>
       </figcaption>
       <div className="legend">{ITEMS.map(i => <span key={i}><i className={`sw s-${i}`} />{i}</span>)}</div>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Prices over the last day, with market shocks shaded"
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Prices over the last day, with market shocks marked"
         onPointerMove={e => {
           const r = e.currentTarget.getBoundingClientRect();
           const t = view.t0 + ((((e.clientX - r.left) / r.width) * W - L) / (W - L - R)) * (view.t1 - view.t0);
@@ -187,9 +187,12 @@ function PriceChart() {
         }}
         onPointerLeave={() => setHover(null)}>
         {view.shocks.map(s => (
-          <g key={s.start}>
-            <rect className="shock-band" x={s.x0} y={T} width={Math.max(2, s.x1 - s.x0)} height={H - T - B} />
-            <text className="axis" x={s.x0 + 3} y={T + 10}>{s.title}</text>
+          <g key={s.start} className="shock-flag">
+            {/* A pennant where the shock began, and a rope along the top for as long as it lasted. */}
+            <line className="shock-pole" x1={s.x0} x2={s.x0} y1={T} y2={H - B} />
+            <line className="shock-rope" x1={s.x0} x2={Math.max(s.x0 + 2, s.x1)} y1={T + 1} y2={T + 1} />
+            <path className="shock-pennant" d={`M${s.x0},${T} l12,5 l-12,5 z`} />
+            <text className="axis" x={s.x0 + 15} y={T + 9}>{s.title}</text>
           </g>
         ))}
         <line className="ref" x1={L} x2={W - R} y1={view.y(1)} y2={view.y(1)} />

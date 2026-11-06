@@ -625,13 +625,7 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
   .toasts { top: 12px; bottom: auto; }
 }
 
-/* ---------- timing ring on the swing ---------- */
 .swing.aiming { background: var(--grain), var(--color-card); box-shadow: 0 var(--edge) 0 0 var(--color-edge), inset 0 0 0 2px var(--color-accent-deep); }
-.ring-stage { position: relative; width: 84px; height: 84px; display: grid; place-items: center; margin-bottom: 4px; }
-.ring-stage i { position: absolute; inset: 14px; border-radius: 50%; pointer-events: none; }
-.ring-target { border: 3px dashed var(--color-mint-deep); }
-.ring-close { border: 4px solid var(--color-accent-deep); animation: ring-close linear forwards; transform: scale(2.4); }
-@keyframes ring-close { from { transform: scale(2.4); opacity: 0.5; } 60% { opacity: 1; } to { transform: scale(0.4); opacity: 0.9; } }
 
 /* ---------- weekly event ---------- */
 .event-card { display: grid; gap: 4px; padding: 14px 16px; border-radius: 16px; background: var(--grain), color-mix(in oklab, var(--color-accent) 22%, var(--color-card)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-accent-deep) 45%, transparent); }
@@ -707,7 +701,7 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
 .ff-stress button { font-size: 13px; padding: 8px 12px; --edge: 3px; }
 .ev-kind.you { background: var(--ink); color: var(--color-paper); }
 
-/* ---------- judge view ---------- */
+/* ---------- the Inspector’s Desk (/judge) ---------- */
 .judge { width: min(980px, 100%); margin: 0 auto; padding: 32px 16px 64px; display: grid; gap: 24px; }
 .judge-head { display: grid; gap: 14px; }
 .judge-head .gate-back { font-weight: 600; font-size: 18px; text-decoration: none; color: var(--ink); }
@@ -752,7 +746,7 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
   .game.guest .world3d { height: calc(100dvh - 150px); }
 }
 
-/* ---------- judge view: step navigation ---------- */
+/* ---------- the Inspector’s Desk: step navigation ---------- */
 .judge-nav { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 8px; padding: 10px; border-radius: var(--radius-pill); background: var(--grain), var(--color-card); box-shadow: var(--shadow-card), inset 0 0 0 1px var(--color-rule); }
 .judge-nav ol { flex: 1; display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; overflow-x: auto; scrollbar-width: none; }
 .judge-nav ol button { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 14px; padding: 8px 14px; border-radius: var(--radius-pill); --edge: 0px; box-shadow: none; background: transparent; }
@@ -790,7 +784,9 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
 .crier-list { list-style: none; margin: 0; padding: 0; display: grid; }
 .crier-list li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; padding: 9px 0; border-top: 1px solid var(--color-rule); font-size: 14px; }
 .crier-list small { white-space: nowrap; }
-.crier-chart .shock-band { fill: color-mix(in oklab, var(--color-accent) 30%, transparent); }
+.crier-chart .shock-pole { stroke: var(--color-accent-3-deep); stroke-width: 1.5; stroke-dasharray: 2 4; }
+.crier-chart .shock-rope { stroke: var(--color-accent-3); stroke-width: 3; stroke-linecap: round; }
+.crier-chart .shock-pennant { fill: var(--color-accent-3); }
 .chest-btn { position: relative; }
 .chest-btn.ready { background: var(--grain), var(--color-accent); box-shadow: 0 4px 0 0 var(--color-accent-deep), 0 0 0 0 color-mix(in oklab, var(--color-accent) 60%, transparent); animation: chest-glow 1.8s ease-in-out infinite; }
 .chest-btn.ready .icon { animation: chest-hop 1.8s var(--ease-spring) infinite; }
@@ -1004,3 +1000,16 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
   .game.immersive .quest:hover > *, .game.immersive .hud-festival:hover .bar { animation: unfold 0.16s var(--ease-snap); }
   @keyframes unfold { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 }
+
+/* ---------- the swing meter: a plank with a gold notch; the tool slides along it ---------- */
+.plank { position: relative; width: min(100%, 300px); height: 44px; margin: 4px 0 6px; border-radius: 10px;
+  background: repeating-linear-gradient(90deg, color-mix(in oklab, var(--color-kraft) 70%, var(--color-sand)) 0 38px, var(--color-kraft) 38px 40px);
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--color-kraft) 60%, black), inset 0 -6px 0 rgb(0 0 0 / 0.12); }
+.plank .notch { position: absolute; top: -5px; bottom: -5px; width: 22px; transform: translateX(-50%); border-radius: 6px;
+  background: var(--color-accent); box-shadow: 0 0 0 2px var(--color-accent-deep), 0 0 14px color-mix(in oklab, var(--color-accent) 70%, transparent); }
+.plank .heft { position: absolute; top: 50%; left: 0; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%;
+  background: var(--color-card); box-shadow: 0 2px 0 var(--color-edge), var(--shadow-float); transform: translate(-50%, -50%);
+  animation: heft linear forwards; }
+@keyframes heft { from { left: 0; transform: translate(-50%, -50%) rotate(-30deg); } to { left: 100%; transform: translate(-50%, -50%) rotate(40deg); } }
+/* A place's panel brings its own controls; the map's buttons step aside while it's open. */
+.game.immersive .stage.with-drawer .map-tools { display: none; }

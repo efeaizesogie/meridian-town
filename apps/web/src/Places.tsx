@@ -144,7 +144,7 @@ function Ground({ place, world, config, busy, actions, onGo }: { place: Place; w
         disabled={!!busy || tired || left < 1}
         label={busy === 'Gather' ? 'Swinging…' : tired ? 'Too tired: eat or rest' : left < 1 ? 'Bare: try another ground' : `Swing ×${config.rules.maxSwingsPerRequest}`}
         sub={`${config.rules.swingCost * config.rules.maxSwingsPerRequest} stamina, ${(me?.toolUses ?? 0) > 0 ? 'tool doubles your yield' : '1 per swing, 2 with a tool'}`}
-        run={me?.perfect ? undefined : 'Tap again when the rings meet for bonus XP'}
+        run={me?.perfect ? undefined : 'Tap again as your tool crosses the gold notch for bonus XP'}
         onSwing={timing => actions.gather(place.slice(2), timing)}
       />
       <div className="tip-card">
@@ -181,11 +181,11 @@ export function EventCard({ world, compact = false }: { world: World; compact?: 
   );
 }
 
-// ---------- the timing ring: tap once to wind up, again as the rings meet ----------
+// ---------- the swing meter: tap to heft the tool, tap again as it crosses the gold notch ----------
 
-const RING_MS = 1400; // the closing ring's whole run
-const FROM = 2.4, TO = 0.4; // its scale at the start and end; the target ring is at scale 1
-const HIT_MS = ((FROM - 1) / (FROM - TO)) * RING_MS;
+const METER_MS = 1400; // the tool's run along the plank
+const NOTCH = 0.7; // where the gold notch sits on the plank (0 to 1)
+const HIT_MS = NOTCH * METER_MS;
 
 function SwingButton({ icon, busy, disabled, label, sub, run, onSwing }: {
   icon: 'axe' | 'pick' | 'sickle';
@@ -207,10 +207,10 @@ function SwingButton({ icon, busy, disabled, label, sub, run, onSwing }: {
   };
   const press = () => {
     if (aim == null) {
-      // With reduced motion there's no ring to watch: swing straight away.
+      // With reduced motion there's no meter to watch: swing straight away.
       if (reducedMotion()) return onSwing('ok');
       setAim(performance.now());
-      timer.current = window.setTimeout(() => strike('ok'), RING_MS + 60);
+      timer.current = window.setTimeout(() => strike('ok'), METER_MS + 60);
       return;
     }
     const off = Math.abs(performance.now() - aim - HIT_MS);
@@ -220,16 +220,15 @@ function SwingButton({ icon, busy, disabled, label, sub, run, onSwing }: {
   return (
     <button className={`swing ${busy ? 'swinging' : ''} ${aim != null ? 'aiming' : ''}`} disabled={disabled && aim == null} onClick={press}>
       {aim != null ? (
-        <span className="ring-stage" aria-hidden>
-          <i className="ring-target" />
-          <i className="ring-close" style={{ animationDuration: `${RING_MS}ms` }} />
-          <Icon name={icon} size={30} />
+        <span className="plank" aria-hidden>
+          <i className="notch" style={{ left: `${NOTCH * 100}%` }} />
+          <span className="heft" style={{ animationDuration: `${METER_MS}ms` }}><Icon name={icon} size={28} /></span>
         </span>
       ) : (
         <span className="swing-icon" aria-hidden><Icon name={icon} size={36} /></span>
       )}
-      {aim != null ? 'Now!' : label}
-      <small>{aim != null ? 'Tap as the rings meet' : run ?? sub}</small>
+      {aim != null ? 'Strike!' : label}
+      <small>{aim != null ? 'Stop it on the gold notch' : run ?? sub}</small>
     </button>
   );
 }

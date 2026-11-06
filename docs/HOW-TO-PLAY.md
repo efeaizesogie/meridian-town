@@ -28,7 +28,7 @@ the map shows where to go. 📖 opens this guide in the game.
 
 ## Making money
 
-1. **Gather.** Swing at a ground. Each swing of 4 costs 20 stamina and yields 1 per swing (2 with a tool). The grounds are shared and regrow through the day, so if everyone is at the Mine, the Forest is the better trip. Tap **Swing** once to wind up, then again as the closing ring meets the dashed one: a perfect strike earns bonus XP (never extra goods).
+1. **Gather.** Swing at a ground. Each swing of 4 costs 20 stamina and yields 1 per swing (2 with a tool). The grounds are shared and regrow through the day, so if everyone is at the Mine, the Forest is the better trip. Tap **Swing** once to heft your tool, then again as it slides over the gold notch on the plank: a perfect strike earns bonus XP (never extra goods).
 1. **Follow the week's event.** Each market week has one event (the Harvest fair, an Early frost, the Rail survey) that raises demand for one good: the shopkeepers it touches raise their targets, so that good pays more all week. It's shown in the Festival panel and at the ground it affects.
 2. **Sell to the best buyer.** Every shop prices with one rule: *the less it has, the more it pays.* A shop that has run out pays up to 4× the usual price; a full one pays pennies. Each unit you sell lowers the price a little, so split big loads across shops. Hover any price to see exactly how it was worked out.
 3. **Take contracts.** When a merchant runs short, it posts a delivery contract on the Notice Board, with the money already locked in escrow. Deliver and you're paid on the spot, usually above market price.

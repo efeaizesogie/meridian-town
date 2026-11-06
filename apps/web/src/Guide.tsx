@@ -22,7 +22,7 @@ const CHAPTERS: { title: string; body: React.ReactNode }[] = [
     body: (
       <>
         <ol>
-          <li><strong>Gather.</strong> Swing at the Forest (wood), the Mine (ore) or the Fields (wheat). Each swing costs stamina. The grounds are shared and regrow through the day, so a crowded ground runs dry. Tap once to wind up, then again as the rings meet: a perfect strike earns bonus XP.</li>
+          <li><strong>Gather.</strong> Swing at the Forest (wood), the Mine (ore) or the Fields (wheat). Each swing costs stamina. The grounds are shared and regrow through the day, so a crowded ground runs dry. Tap once to heft your tool, then again as it crosses the gold notch: a perfect strike earns bonus XP.</li>
           <li><strong>Follow the week’s event.</strong> Each week one event (a fair, a frost, a rail survey) makes one good pay more. It’s in the Festival panel.</li>
           <li><strong>Sell to the best buyer.</strong> Every shop prices with the same rule: <em>the less it has, the more it pays.</em> Read the price signs on the map. A shop that has run out pays up to 4× the usual price; a full one pays pennies.</li>
           <li><strong>Take contracts.</strong> When a merchant runs short, it posts a delivery contract on the notice board with the money locked in escrow. Deliver and you’re paid on the spot, usually above market price.</li>

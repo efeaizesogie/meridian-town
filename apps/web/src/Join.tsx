@@ -68,7 +68,7 @@ export function Join({ onJoined, onLookAround }: { onJoined: (accountId: string,
             {onLookAround && (
               <div className="gate-alt">
                 <button type="button" className="link" onClick={onLookAround}>Look around the town first</button>
-                <a className="text-link" href="/judge">Judging? Open the judge view</a>
+                <a className="text-link" href="/judge">Judging the hackathon? Visit the Inspector’s Desk</a>
               </div>
             )}
           </>

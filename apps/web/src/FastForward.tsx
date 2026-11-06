@@ -104,13 +104,13 @@ export function FastForward({ world, onClose }: { world: World; onClose: () => v
     setPokes(p => [...p, { tick: t.tick, text }]);
     setFrame(f => f + 1);
   };
-  const flood = () => poke('You dumped 300 wheat on the Granary and the Bakery. Watch what they pay for wheat fall.', t => {
+  const flood = () => poke('A grain barge unloaded 300 wheat at the Granary and the Bakery. Watch what they pay for wheat fall.', t => {
     for (const id of ['granary', 'baker']) {
       const shop = t.shops.find(x => x.id === id);
       if (shop) shop.stock.wheat += 150;
     }
   });
-  const bankrupt = () => poke('You emptied the Bakery’s till and shelves after it had already missed one upkeep. It can’t pay tonight, so it closes and its deed goes to auction.', t => {
+  const bankrupt = () => poke('Oswin’s till and shelves ran dry after a missed upkeep. He can’t pay tonight, so the Bakery closes and its deed goes to auction.', t => {
     const shop = t.shops.find(x => x.id === 'baker');
     if (!shop) return;
     shop.cash = 0;
@@ -118,7 +118,7 @@ export function FastForward({ world, onClose }: { world: World; onClose: () => v
     shop.stock.wheat = 0;
     shop.missedUpkeep = Math.max(shop.missedUpkeep, DEFAULT_PARAMS.missedUpkeepToClose - 1);
   });
-  const famine = () => poke('You stripped the Fields bare. Wheat gets scarce, prices rise, and shops post contracts to get it.', t => {
+  const famine = () => poke('Drought: the Fields are bare. Wheat gets scarce, prices rise, and shops post contracts to get it.', t => {
     t.ground.wheat = 0;
     for (const id of ['granary', 'baker']) {
       const shop = t.shops.find(x => x.id === id);
@@ -179,12 +179,12 @@ export function FastForward({ world, onClose }: { world: World; onClose: () => v
           </div>
         </div>
 
-        <div className="ff-stress" role="group" aria-label="Stress tests">
-          <span className="muted">Stress test</span>
-          <button disabled={done} onClick={flood}>Flood the wheat market</button>
-          <button disabled={done} onClick={famine}>Strip the Fields bare</button>
-          <button disabled={done} onClick={bankrupt}>Bankrupt the Bakery</button>
-          <button disabled={done} onClick={skip}>Skip to the Festival</button>
+        <div className="ff-stress" role="group" aria-label="What if">
+          <span className="muted">What if…</span>
+          <button disabled={done} onClick={flood}>A grain barge docks</button>
+          <button disabled={done} onClick={famine}>Drought on the Fields</button>
+          <button disabled={done} onClick={bankrupt}>Oswin’s till runs dry</button>
+          <button disabled={done} onClick={skip}>Jump to Festival night</button>
         </div>
 
         <div className="ff-status">
@@ -212,7 +212,7 @@ export function FastForward({ world, onClose }: { world: World; onClose: () => v
             {events.slice(0, 60).map((e, i) => (
               <li key={`${e.tick}-${i}`} className={`ev ${e.kind}`}>
                 <span className="ev-day">Day {Math.floor(e.tick / DEFAULT_PARAMS.ticksPerDay) + 1}</span>
-                <span className={`ev-kind ${e.kind}`}>{e.kind === 'you' ? 'You' : KIND_LABEL[e.kind]}</span>
+                <span className={`ev-kind ${e.kind}`}>{e.kind === 'you' ? 'What if' : KIND_LABEL[e.kind]}</span>
                 {e.text}
               </li>
             ))}

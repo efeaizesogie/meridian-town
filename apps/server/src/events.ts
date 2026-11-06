@@ -32,12 +32,12 @@ export const EVENTS: TownEvent[] = [
 ];
 
 export const SHOCKS: (TownEvent & { minutes: number })[] = [
-  { id: 'rain', title: 'Rain on the Fields', item: 'wheat', shops: ['granary', 'baker'], boostBps: 2000, minutes: 30,
-    blurb: 'A downpour flattened the wheat. Wen and Oswin pay more for what’s left.' },
+  { id: 'blight', title: 'Blight on the wheat', item: 'wheat', shops: ['granary', 'baker'], boostBps: 2000, minutes: 30,
+    blurb: 'Rust spots on the ears: half a field is lost. Wen and Oswin pay more for sound wheat.' },
   { id: 'flood', title: 'Water in the Mine', item: 'ore', shops: ['mine', 'smith'], boostBps: 2000, minutes: 30,
     blurb: 'The lower shaft flooded. Ore is scarce and Petra pays more for it.' },
-  { id: 'rush', title: 'Festive rush', item: 'wheat', shops: ['baker'], boostBps: 3000, minutes: 20,
-    blurb: 'A wedding party wants every loaf in town. Oswin needs wheat, now.' },
+  { id: 'wedding', title: 'A wedding feast', item: 'wheat', shops: ['baker'], boostBps: 3000, minutes: 20,
+    blurb: 'The miller’s daughter is marrying and the whole town is invited. Oswin needs wheat, now.' },
   { id: 'storm', title: 'Storm in the Forest', item: 'wood', shops: ['lumberyard'], boostBps: -2000, minutes: 30,
     blurb: 'A storm brought down the old oaks. Timber is everywhere and Brann pays less for it.' },
   { id: 'caravan', title: 'Ore caravan arrives', item: 'ore', shops: ['mine'], boostBps: -2000, minutes: 25,

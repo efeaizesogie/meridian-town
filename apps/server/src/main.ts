@@ -505,7 +505,7 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
       players.setStamina(p, players.staminaNow(p, dayMs) + wasted * R.swingCost);
     }
     const before = prog.levelOf(p.progress.xp).level;
-    // The timing ring: a well-timed swing earns bonus XP (never extra goods, so it can't be farmed
+    // The swing meter: a well-timed swing earns bonus XP (never extra goods, so it can't be farmed
     // for coin). The grade comes from the client; at worst a cheat earns a little XP.
     const grade = got > 0 && (timing === 'perfect' || timing === 'good') ? timing : 'ok';
     const bonus = grade === 'perfect' ? 3 : grade === 'good' ? 1 : 0;

@@ -1,4 +1,4 @@
-// The judge view (/judge): everything worth checking in Meridian, in five minutes, with no
+// The Inspector’s Desk (/judge), for hackathon judges: everything worth checking in Meridian, in five minutes, with no
 // walking around. Every action button sends a real testnet transaction, signed in this browser
 // with a key that can only call the town contract, and links to it on the explorer.
 import { useEffect, useState } from 'react';
@@ -50,7 +50,7 @@ export function Judge({ config, world, account, onJoined, refresh }: {
   /** The game's panels take an `act`; here it logs to the judge log instead of a toast. */
   const actAdapter: Act = (label, task) => run(label, async () => ({ text: (await task()) || 'Done.' }))();
 
-  if (!world) return <div className="loading">Reading the town for the judge view…</div>;
+  if (!world) return <div className="loading">Opening the Inspector’s Desk…</div>;
 
   const items = world.player?.items ?? [0, 0, 0, 0, 0];
   const raw = (['wood', 'ore', 'wheat'] as const);
@@ -156,7 +156,7 @@ export function Judge({ config, world, account, onJoined, refresh }: {
     <div className="judge">
       <header className="judge-head">
         <a className="gate-back" href="/">Meridian</a>
-        <h1>Judge view</h1>
+        <h1>The Inspector’s Desk</h1>
         <p className="lede">
           Everything worth checking, in five minutes. Each button below sends a real testnet transaction, signed in this browser with a key that can only call the town contract, and links to it on the explorer.
           Prefer to play? <a className="text-link" href="/play">Open the game</a>.
@@ -259,8 +259,8 @@ export function Judge({ config, world, account, onJoined, refresh }: {
 
       {step === 'stress' && (
       <section className="judge-section" id="stress">
-        <h2>Stress-test the economy</h2>
-        <p>Fast-forward copies the live town into this browser and plays the next market week in a minute, on the same rules the contract enforces (the contract’s tests are pinned to the same numbers). Then break it: flood the wheat market, strip the Fields, bankrupt the Bakery, and watch prices, contracts, closures, auctions and the Festival respond. Nothing is sent to the chain.</p>
+        <h2>What if…? Put the town under pressure</h2>
+        <p>Fast-forward copies the live town into this browser and plays the next market week in a minute, on the same rules the contract enforces (the contract’s tests are pinned to the same numbers). Then throw the week a curveball: a grain barge docks, drought takes the Fields, Oswin’s till runs dry. Watch prices, delivery contracts, closures, auctions and the Festival answer. Nothing is sent to the chain.</p>
         <button className="primary" onClick={() => setFf(true)}><Icon name="forward" /> Open fast-forward</button>
       </section>
       )}
@@ -338,7 +338,7 @@ export function Judge({ config, world, account, onJoined, refresh }: {
 const STEPS = [
   { id: 'act', title: 'Try every action' },
   { id: 'social', title: 'Social money & NFTs' },
-  { id: 'stress', title: 'Stress-test the economy' },
+  { id: 'stress', title: 'What if…?' },
   { id: 'agents', title: 'The AI shopkeepers' },
   { id: 'books', title: 'The town’s books' },
   { id: 'chain', title: 'What’s on chain' },
@@ -372,7 +372,7 @@ function useStep(): [StepId, (id: StepId) => void] {
 function JudgeNav({ step, go }: { step: StepId; go: (id: StepId) => void }) {
   const i = STEPS.findIndex(s => s.id === step);
   return (
-    <nav className="judge-nav" aria-label="Judge view sections">
+    <nav className="judge-nav" aria-label="Inspector’s Desk sections">
       <button className="small" disabled={i === 0} onClick={() => go(STEPS[i - 1].id)} aria-label="Previous section">←</button>
       <ol>
         {STEPS.map((s, n) => (

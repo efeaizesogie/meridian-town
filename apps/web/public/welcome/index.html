@@ -182,7 +182,10 @@ mark { background: var(--mark); color: inherit; box-decoration-break: clone; -we
 .speech blockquote { margin: 0; font-size: var(--text-xl); font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; }
 .speech.thinks blockquote { font-size: var(--text-md); font-weight: 500; color: var(--color-ink-2); line-height: 1.5; }
 .speech figcaption b { color: var(--color-ink); font-weight: 600; }
-.ui-frame img { aspect-ratio: 8 / 5; }
+.ui-frame img, .pin .frame img, .live-shot img { aspect-ratio: 8 / 5; }
+.live-shot { margin: var(--space-xl) 0 0; }
+.live-shot .frame { box-shadow: var(--shadow-card); }
+.live-shot figcaption { margin-top: var(--space-sm); color: var(--color-muted); font-size: var(--text-sm); }
 
 /* ---------- how you play: Pinned ---------- */
 .steps { list-style: none; margin: var(--space-xl) 0 0; padding: 0; display: grid; gap: var(--space-xs); counter-reset: s; }
@@ -273,15 +276,15 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
       </div>
       <figure class="hero-art" style="margin:0">
         <span class="sticker">Mainnet soon</span>
-        <div class="sheet"><div class="shot torn"><img src="/welcome/img/festival-night.jpg" alt="Meridian at night during the Festival: a lamplit square of cottages and shops, fireworks bursting over the wheat fields." width="1401" height="814"></div></div>
-        <div class="board sheet" aria-label="Prices the shops were paying on market day 190">
-          <span class="tag"><b>Lumberyard</b><span>pays 1.36</span></span>
-          <span class="tag"><b>Forge</b><span>pays 1.67</span></span>
-          <span class="tag"><b>Mine Office</b><span>pays 1.89</span></span>
-          <span class="tag"><b>Bakery</b><span>pays 1.94</span></span>
-          <span class="tag"><b>Granary</b><span>pays 0.77</span></span>
+        <div class="sheet"><div class="shot torn"><img src="/welcome/img/festival-night.jpg" alt="Meridian at night during the Festival: a lamplit square of cottages and shops, fireworks bursting over the wheat fields." width="2560" height="1488"></div></div>
+        <div class="board sheet" aria-label="Prices the shops were paying on market day 281">
+          <span class="tag"><b>Bakery</b><span>pays 1.93</span></span>
+          <span class="tag"><b>Lumberyard</b><span>pays 1.54</span></span>
+          <span class="tag"><b>Forge</b><span>pays 1.54</span></span>
+          <span class="tag"><b>Granary</b><span>pays 1.37</span></span>
+          <span class="tag"><b>Mine Office</b><span>full</span></span>
         </div>
-        <figcaption class="board-note">What the shops paid on market day 190, in MERI coins.</figcaption>
+        <figcaption class="board-note">What the shops paid on market day 281, in MERI coins. A full shop pays nothing.</figcaption>
       </figure>
     </div>
   </section>
@@ -298,6 +301,10 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
         <div><dt>Open contracts</dt><dd data-stat="contracts">…</dd><small>on the Notice Board</small></div>
         <div><dt>1 MERI</dt><dd data-stat="price">…</dd><small>NEAR, on Rhea</small></div>
       </dl>
+      <figure class="live-shot">
+        <div class="frame"><img src="/welcome/img/ui-prices.jpg" alt="The game full screen: the island with a price over every shop, the Festival count at the top, your purse and your quest." width="2560" height="1600" loading="lazy"></div>
+        <figcaption>The whole island on one screen: every shop’s price, the week’s Festival count, and your next quest. Menus stay out of the way until you need them.</figcaption>
+      </figure>
     </div>
   </section>
 
@@ -313,9 +320,9 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
         </div>
       </div>
       <div class="hour-frames">
-        <figure class="f-day"><div class="frame"><img src="/welcome/img/island-day.jpg" alt="The whole island by day: the Forest, the Mine and the Fields around a square of six shops." width="1401" height="814" loading="lazy"></div><figcaption>Morning over the square, with the Forest, the Mine and the Fields behind it.</figcaption></figure>
-        <figure class="f-dusk"><div class="frame"><img src="/welcome/img/island-dusk.jpg" alt="The island in low evening light, long shadows across the paths." width="1401" height="814" loading="lazy"></div><figcaption>Long shadows, and porters out on their deliveries.</figcaption></figure>
-        <figure class="f-night"><div class="frame"><img src="/welcome/img/festival-night.jpg" alt="Fireworks over the Fields on Festival night." width="1401" height="814" loading="lazy"></div><figcaption>The week’s target met, and fireworks over the Fields.</figcaption></figure>
+        <figure class="f-day"><div class="frame"><img src="/welcome/img/island-day.jpg" alt="The whole island by day: the Forest, the Mine and the Fields around a square of six shops." width="2560" height="1488" loading="lazy"></div><figcaption>Morning over the square, with the Forest, the Mine and the Fields behind it.</figcaption></figure>
+        <figure class="f-dusk"><div class="frame"><img src="/welcome/img/island-dusk.jpg" alt="The island in low evening light, long shadows across the paths." width="2560" height="1488" loading="lazy"></div><figcaption>Long shadows, and porters out on their deliveries.</figcaption></figure>
+        <figure class="f-night"><div class="frame"><img src="/welcome/img/festival-night.jpg" alt="Fireworks over the Fields on Festival night." width="2560" height="1488" loading="lazy"></div><figcaption>The week’s target met, and fireworks over the Fields.</figcaption></figure>
       </div>
     </div>
   </section>
@@ -337,8 +344,8 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
         </div>
       </div>
       <figure class="ui-frame" style="margin:0">
-        <div class="frame sheet"><img src="/welcome/img/ui-shop.jpg" alt="Brann's Lumberyard in the game, its panel open with the till, stock and buy and sell prices." width="800" height="500" loading="lazy"></div>
-        <figcaption style="margin-top:var(--space-sm)">Brann’s Lumberyard, open. Till, stock and prices come straight from the town’s ledger.</figcaption>
+        <div class="frame sheet"><img src="/welcome/img/ui-shop.jpg" alt="Oswin's Bakery open in the game: its till, stock and prices, and the $OSWIN shop coin you can buy into." width="2560" height="1600" loading="lazy"></div>
+        <figcaption style="margin-top:var(--space-sm)">Oswin’s Bakery, open. Till, stock and prices come straight from the town’s ledger, and its coin, $OSWIN, pays holders a share of the profit.</figcaption>
       </figure>
     </div>
   </section>
@@ -356,8 +363,8 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
         </ol>
       </div>
       <figure class="pin" style="margin:0">
-        <div class="frame sheet"><img src="/welcome/img/ui-prices.jpg" alt="The game at dusk with its interface: the quest scroll, the Festival meter and a price tag over every shop." width="800" height="500" loading="lazy"></div>
-        <figcaption style="margin-top:var(--space-sm)">Your first quest, the Festival meter, and every shop’s price, all on one screen.</figcaption>
+        <div class="frame sheet"><img src="/welcome/img/ui-swing.jpg" alt="Gathering wheat in the Fields: the swing meter on a wooden plank, the sickle right on the gold notch." width="2560" height="1600" loading="lazy"></div>
+        <figcaption style="margin-top:var(--space-sm)">Every swing is a little test of timing: stop your tool on the gold notch for bonus XP.</figcaption>
       </figure>
     </div>
   </section>
@@ -418,7 +425,7 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
         <p class="lead">Pick a name and you’re on the island.</p>
         <a class="btn" href="/play">Enter Meridian</a>
       </div>
-      <div class="frame"><img src="/welcome/img/lumberyard.jpg" alt="Two townsfolk outside the red-roofed Lumberyard." width="1131" height="820" loading="lazy"></div>
+      <div class="frame"><img src="/welcome/img/lumberyard.jpg" alt="Townsfolk outside the red-roofed Lumberyard at dusk, the Forest behind it." width="2560" height="1856" loading="lazy"></div>
     </div>
   </section>
 </main>
@@ -429,7 +436,7 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
     <div class="foot-links">
       <a href="/play">Play</a>
       <a href="https://x.com/meridiantown" target="_blank" rel="noopener">Follow @meridiantown on X</a>
-      <a href="/judge">Judge view</a>
+      <a href="/judge">Inspector’s Desk</a>
       <a href="https://github.com/efeaizesogie/meridian-town">Source code</a>
       <span>3D models by Kenney, CC0</span>
       <span>Built on NEAR, coming to mainnet soon</span>
