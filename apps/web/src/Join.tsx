@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { SavePhrase } from './Account';
 import { backup, join, restoreWithKey, restoreWithPhrase } from './near';
 
-export function Join({ onJoined }: { onJoined: (accountId: string, isNew: boolean) => void }) {
+export function Join({ onJoined, onLookAround }: { onJoined: (accountId: string, isNew: boolean) => void; onLookAround?: () => void }) {
   const [mode, setMode] = useState<'new' | 'back'>('new');
   const [name, setName] = useState('');
   const [secret, setSecret] = useState('');
@@ -65,6 +65,12 @@ export function Join({ onJoined }: { onJoined: (accountId: string, isNew: boolea
               {error && <p className="error">{error}</p>}
               <p className="fine">No wallet needed, and the game pays your gas. You’ll get 12 recovery words that make the account yours.</p>
             </form>
+            {onLookAround && (
+              <div className="gate-alt">
+                <button type="button" className="link" onClick={onLookAround}>Look around the town first</button>
+                <a className="text-link" href="/judge">Judging? Open the judge view</a>
+              </div>
+            )}
           </>
         ) : (
           <>

@@ -37,7 +37,7 @@ fn genesis() -> Town {
 
 /// Every coin must sit in a known account: players, shops, treasury, outside, escrow, festival pool.
 fn assert_conserved(t: &Town, players: &[&str]) {
-    let mut known: Vec<AccountId> = vec![town_id(), sub("outside"), sub("escrow"), sub("festival"), sub("auction")];
+    let mut known: Vec<AccountId> = vec![town_id(), sub("outside"), sub("escrow"), sub("festival"), sub("auction"), sub("bets"), sub("coins"), sub("tourney")];
     known.extend(t.shops.keys().map(|id| sub(id)));
     known.extend(players.iter().map(|p| acc(p)));
     let sum: u128 = known.iter().map(|a| t.coin_of(a)).sum();
@@ -698,4 +698,263 @@ fn residents_leave_a_shop_at_or_below_target_alone() {
     t.resident_demand();
     assert_eq!(t.coin_of(&town_id()), treasury);
     assert_eq!(t.items_of(&baker, Item::Bread), target.min(have));
+}
+
+// ---------- V4: tips, boosts, predictions, shop coins, tournament, NFTs ----------
+
+#[test]
+fn players_tip_each_other() {
+    let mut t = genesis();
+    fund(&mut t, "ada.testnet", 10);
+    as_("ada.testnet", T0 + 10);
+    t.tip(acc("bob.testnet"), U128(3 * MICRO), Some("for the wheat".into()));
+    assert_eq!(t.coin_of(&acc("bob.testnet")), 3 * MICRO);
+    assert_eq!(t.coin_of(&acc("ada.testnet")), 7 * MICRO);
+    assert_conserved(&t, &["ada.testnet", "bob.testnet"]);
+}
+
+#[test]
+#[should_panic(expected = "you can't tip yourself")]
+fn no_tipping_yourself() {
+    let mut t = genesis();
+    fund(&mut t, "ada.testnet", 10);
+    as_("ada.testnet", T0 + 10);
+    t.tip(acc("ada.testnet"), U128(MICRO), None);
+}
+
+#[test]
+fn boosts_burn_coin_and_are_listed() {
+    let mut t = genesis();
+    fund(&mut t, "ada.testnet", 40);
+    let supply = t.coin.total_supply;
+    as_("ada.testnet", T0 + 10);
+    t.burn_for_boost("bell".into(), Some(Item::Wheat), None);
+    t.burn_for_boost("banner".into(), None, Some("Ada was here".into()));
+    assert_eq!(t.coin.total_supply, supply - 30 * MICRO);
+    let b = t.get_boosts(None);
+    assert_eq!(b.len(), 2);
+    assert_eq!(b[0].kind, "banner", "newest first");
+    assert_eq!(b[1].item, Some(Item::Wheat));
+}
+
+#[test]
+#[should_panic(expected = "ring the bell for wood, ore or wheat")]
+fn the_bell_rings_for_raw_goods_only() {
+    let mut t = genesis();
+    fund(&mut t, "ada.testnet", 40);
+    as_("ada.testnet", T0 + 10);
+    t.burn_for_boost("bell".into(), Some(Item::Bread), None);
+}
+
+#[test]
+fn predictions_pay_the_winning_side_and_burn_the_fee() {
+    let mut t = genesis();
+    fund(&mut t, "ada.testnet", 100);
+    fund(&mut t, "bob.testnet", 100);
+    as_("ada.testnet", T0 + 10);
+    t.predict(true, U128(30 * MICRO));
+    as_("bob.testnet", T0 + 20);
+    t.predict(false, U128(70 * MICRO));
+    // Nobody trades in week 0, so the Festival is missed: bob wins the whole pot less 2%.
+    for d in 0..7 {
+        run_to_day(&mut t, d);
+    }
+    assert!(!t.get_weeks(None, None)[0].hit);
+    let supply = t.coin.total_supply;
+    as_("ada.testnet", T0 + 7 * DAY_NS + 10);
+    assert_eq!(t.claim_prediction(0).0, 0);
+    as_("bob.testnet", T0 + 7 * DAY_NS + 20);
+    assert_eq!(t.claim_prediction(0).0, 98 * MICRO);
+    assert_eq!(t.coin.total_supply, supply, "claiming moves coin, it doesn't mint");
+    assert_eq!(t.coin_of(&sub("bets")), 0);
+    assert_conserved(&t, &["ada.testnet", "bob.testnet"]);
+}
+
+#[test]
+#[should_panic(expected = "betting on this week has closed")]
+fn no_betting_in_the_last_two_days() {
+    let mut t = genesis();
+    fund(&mut t, "ada.testnet", 10);
+    for d in 0..5 {
+        run_to_day(&mut t, d);
+    }
+    as_("ada.testnet", T0 + 5 * DAY_NS + 10);
+    t.predict(true, U128(MICRO));
+}
+
+#[test]
+fn shop_coins_ride_a_bonding_curve_and_burn_a_fee() {
+    let mut t = genesis();
+    fund(&mut t, "ada.testnet", 100);
+    fund(&mut t, "bob.testnet", 100);
+    let supply = t.coin.total_supply;
+    as_("ada.testnet", T0 + 10);
+    let paid = t.buy_shop_coin("baker".into(), 10, U128(100 * MICRO)).0;
+    // 10 coins from supply 0: 10 × 1 + 0.02 × 45 = 10.9 MERI, plus 2.5%.
+    assert_eq!(paid, 10_900_000 + 10_900_000 * 250 / 10_000);
+    as_("bob.testnet", T0 + 20);
+    let bob_paid = t.buy_shop_coin("baker".into(), 10, U128(100 * MICRO)).0;
+    assert!(bob_paid > paid, "later buyers pay more");
+    as_("ada.testnet", T0 + 30);
+    let back = t.sell_shop_coin("baker".into(), 10, U128(0)).0;
+    assert!(back > 10_900_000, "ada sells into a higher curve");
+    assert!(t.coin.total_supply < supply, "fees burn");
+    assert_conserved(&t, &["ada.testnet", "bob.testnet"]);
+}
+
+#[test]
+fn shop_coin_holders_share_the_shops_profit() {
+    let mut t = genesis();
+    fund(&mut t, "ada.testnet", 50);
+    as_("ada.testnet", T0 + 10);
+    t.buy_shop_coin("mine".into(), 5, U128(50 * MICRO));
+    // A profitable day for the Mine Office: players buy its ore.
+    fund(&mut t, "bob.testnet", 400);
+    as_("bob.testnet", T0 + 20);
+    t.buy("mine".into(), Item::Ore, 20, U128(400 * MICRO));
+    run_to_day(&mut t, 0);
+    let h = t.get_coin_holdings(acc("ada.testnet"));
+    assert_eq!(h.len(), 1);
+    if h[0].claimable.0 > 0 {
+        as_("ada.testnet", T0 + DAY_NS + 10);
+        let got = t.claim_coin_dividends("mine".into()).0;
+        assert_eq!(got, h[0].claimable.0);
+    }
+    assert_conserved(&t, &["ada.testnet", "bob.testnet"]);
+}
+
+#[test]
+fn the_biggest_sale_wins_the_tournament() {
+    let mut t = genesis();
+    for p in ["ada.testnet", "bob.testnet"] {
+        fund(&mut t, p, 10);
+        as_(p, T0 + 10);
+        t.enter_tournament();
+        as_("server.testnet", T0 + 20);
+        t.gather(acc(p), Item::Ore, if p == "ada.testnet" { 10 } else { 20 });
+    }
+    as_("ada.testnet", T0 + 30);
+    t.sell("mine".into(), Item::Ore, 10, U128(0));
+    as_("bob.testnet", T0 + 40);
+    t.sell("mine".into(), Item::Ore, 20, U128(0));
+    let (tour, _) = t.get_tournament(None, None);
+    assert_eq!(tour.leader, Some(acc("bob.testnet")));
+    assert_eq!(tour.pot.0, 10 * MICRO);
+    let before = t.coin_of(&acc("bob.testnet"));
+    for d in 0..7 {
+        run_to_day(&mut t, d);
+    }
+    assert_eq!(t.coin_of(&acc("bob.testnet")) - before, 9_500_000, "95% of the pot");
+    assert_conserved(&t, &["ada.testnet", "bob.testnet"]);
+}
+
+#[test]
+fn an_unwon_tournament_rolls_over() {
+    let mut t = genesis();
+    fund(&mut t, "ada.testnet", 10);
+    as_("ada.testnet", T0 + 10);
+    t.enter_tournament();
+    for d in 0..7 {
+        run_to_day(&mut t, d);
+    }
+    let (next, _) = t.get_tournament(Some(1), None);
+    assert_eq!(next.pot.0, 5 * MICRO);
+}
+
+#[test]
+fn deed_holders_take_a_quarter_of_the_tax_at_their_shop() {
+    let mut t = genesis();
+    fund(&mut t, "ada.testnet", 400);
+    buy_deed(&mut t, "mine", "ada.testnet", 350, 1);
+    let ada = t.coin_of(&acc("ada.testnet"));
+    as_("server.testnet", T0 + 2 * DAY_NS + 10);
+    t.gather(acc("bob.testnet"), Item::Ore, 10);
+    as_("bob.testnet", T0 + 2 * DAY_NS + 20);
+    let quote = t.quote_sell("mine".into(), Item::Ore, 10).0;
+    t.sell("mine".into(), Item::Ore, 10, U128(0));
+    let tax = quote * 200 / 10_000;
+    assert_eq!(t.coin_of(&acc("ada.testnet")) - ada, tax / 4);
+    assert_conserved(&t, &["ada.testnet", "bob.testnet"]);
+}
+
+#[test]
+fn marks_are_soulbound_nfts() {
+    let mut t = genesis();
+    as_("server.testnet", T0 + 10);
+    assert!(t.mint_mark(acc("ada.testnet"), "perfect".into()));
+    assert!(!t.mint_mark(acc("ada.testnet"), "perfect".into()), "once only");
+    assert_eq!(t.nft_supply_for_owner(acc("ada.testnet")).0, 1);
+}
+
+#[test]
+#[should_panic(expected = "marks of the trade are soulbound")]
+fn marks_cant_be_transferred() {
+    let mut t = genesis();
+    as_("server.testnet", T0 + 10);
+    t.mint_mark(acc("ada.testnet"), "perfect".into());
+    as_("ada.testnet", T0 + 20);
+    t.nft_transfer(acc("bob.testnet"), "mark-perfect-ada.testnet".into(), None, None);
+}
+
+#[test]
+#[should_panic(expected = "minter only")]
+fn only_the_server_mints_marks() {
+    let mut t = genesis();
+    as_("ada.testnet", T0 + 10);
+    t.mint_mark(acc("ada.testnet"), "perfect".into());
+}
+
+#[test]
+fn crafted_tools_add_yield_wear_out_and_trade() {
+    let mut t = genesis();
+    as_("server.testnet", T0 + 10);
+    t.gather(acc("ada.testnet"), Item::Wood, 10);
+    t.gather(acc("ada.testnet"), Item::Ore, 10);
+    fund(&mut t, "ada.testnet", 10);
+    as_("ada.testnet", T0 + 20);
+    let id = t.craft_tool("sickle".into());
+    assert_eq!(t.items_of(&acc("ada.testnet"), Item::Wood), 5);
+    let tools = t.get_tools(acc("ada.testnet"));
+    assert_eq!(tools[0].uses_left, 60);
+    as_("server.testnet", T0 + 30);
+    let got = t.gather_batch(vec![crate::market::GatherOrder { player: acc("ada.testnet"), item: Item::Wheat, quantity: 4, tool: Some(id.clone()) }]);
+    assert_eq!(got, vec![8], "one extra wheat per swing");
+    assert_eq!(t.get_tools(acc("ada.testnet"))[0].uses_left, 56);
+    // The wrong ground gets no bonus.
+    let got = t.gather_batch(vec![crate::market::GatherOrder { player: acc("ada.testnet"), item: Item::Ore, quantity: 4, tool: Some(id.clone()) }]);
+    assert_eq!(got, vec![4]);
+    // It trades, and the new holder gets the bonus, not the old one.
+    as_("ada.testnet", T0 + 40);
+    t.nft_transfer(acc("bob.testnet"), id.clone(), None, None);
+    as_("server.testnet", T0 + 50);
+    let got = t.gather_batch(vec![crate::market::GatherOrder { player: acc("ada.testnet"), item: Item::Wheat, quantity: 4, tool: Some(id.clone()) }]);
+    assert_eq!(got, vec![4]);
+    assert_eq!(t.get_tools(acc("bob.testnet")).len(), 1);
+}
+
+#[test]
+fn festival_traders_get_a_badge_when_they_claim() {
+    let mut t = genesis();
+    as_("owner.testnet", T0 + 1);
+    t.set_target_floor(U128(100 * MICRO));
+    for d in 0..6u64 {
+        let at = T0 + d * DAY_NS + 1_000;
+        as_("server.testnet", at);
+        for item in Item::RAW {
+            t.gather(acc("ada.testnet"), item, 15);
+        }
+        as_("ada.testnet", at + 1);
+        for (shop, item) in [("granary", Item::Wheat), ("mine", Item::Ore), ("lumberyard", Item::Wood)] {
+            let n = (t.items_of(&acc("ada.testnet"), item) as u32).min(t.sell_capacity(shop.into(), item));
+            if n > 0 {
+                t.sell(shop.into(), item, n, U128(0));
+            }
+        }
+    }
+    as_("keeper.testnet", T0 + 7 * DAY_NS + 1);
+    t.advance();
+    assert!(t.get_weeks(None, None)[0].hit, "setup should hit the lowered floor");
+    as_("ada.testnet", T0 + 7 * DAY_NS + 2);
+    assert!(t.claim_festival().0 > 0);
+    assert!(t.nft_token("festival-1-ada.testnet".into()).is_some());
 }

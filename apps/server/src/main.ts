@@ -5,14 +5,22 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PublicKey } from 'near-api-js';
-import { GAME, NETWORK, RPCS, TOWN, accountExists, advanceTown, createPlayer, gatherBatch, hasKey, verifyTownCall, verifyUseItem, provider, view, viewOn, type GatherOrder } from './chain.ts';
+import { PublicKey, teraToGas } from 'near-api-js';
+import { GAME, NETWORK, RPCS, TOWN, accountExists, advanceTown, createPlayer, game, gatherBatch, hasKey, verifyTownCall, verifyUseItem, provider, view, viewOn, type GatherOrder } from './chain.ts';
 import * as players from './players.ts';
 import * as prog from './progression.ts';
 import { PERSONAS, agentAccount, getReports, startAgents } from './agents.ts';
 import { getSupplierBids, startSuppliers } from './suppliers.ts';
 import { getTownsfolk, startTownsfolk } from './townsfolk.ts';
 import { readGuilds, runRegistrar, type GuildView } from './guilds.ts';
+import { activeBells, activeShock, eventFor, maybeShock, myVote, setBoosts, shockHistory, tally, vote as voteEvent } from './events.ts';
+import * as records from './records.ts';
+import * as feed from './feed.ts';
+import * as styles from './styles.ts';
+import * as bounties from './bounties.ts';
+
+// The gathering record starts from what players had already gathered before records existed.
+for (const p of players.all()) records.offer('gather', { who: p.accountId, value: p.progress.stats.gathered, detail: 'goods gathered in all' });
 
 const PORT = Number(process.env.PORT ?? 8787);
 const WEB_DIST = fileURLToPath(new URL('../../web/dist/', import.meta.url));
@@ -102,18 +110,45 @@ async function readWorld() {
     slow || !world ? view('get_weeks', {}) : world.weeks,
     world?.clock ?? view<[number, number, number]>('get_clock'),
   ]);
+  // V4 (shop coins, boosts, the prediction pool, the tournament): read every poll, and simply
+  // absent while the contract is older.
+  const opt = <T,>(p: Promise<T>) => p.catch(() => null);
+  const [shopCoins, boosts, prediction, tournament] = await Promise.all([
+    opt(view('get_shop_coins')), opt(view<any[]>('get_boosts', { limit: 20 })), opt(view('get_prediction', {})), opt(view('get_tournament', {})),
+  ]);
   if (slow) lastSlowRead = Date.now();
   // readAt: when the clock was read, so clients can turn its chain time into a local offset.
-  world = { town, shops, jobs, auctions, caravan, guilds, weeks, params, clock, readAt: world?.readAt ?? Date.now() };
+  const prev = world;
+  world = { town, shops, jobs, auctions, caravan, guilds, weeks, params, clock, readAt: world?.readAt ?? Date.now(), shopCoins, boosts, prediction, tournament };
+  if (boosts) setBoosts(boosts);
+  feed.watch(prev, world);
 }
 const pollWorld = () => readWorld().catch(e => console.error('read world', e instanceof Error ? e.message : e));
 pollWorld();
 setInterval(pollWorld, 5000).unref();
 
+// Market shocks: every quarter hour, maybe something happens (rain, a flooded shaft, a storm).
+// They only run where the shopkeepers do, so a quiet local server doesn't fight the live one.
+if (process.env.AGENTS !== 'off') {
+  setInterval(() => {
+    if (world) maybeShock(world.shops.filter((s: any) => s.shop.open).map((s: any) => s.shop.id), 0.3);
+  }, 15 * 60_000).unref();
+}
+
 async function playerView(accountId: string) {
   const hit = playerCache.get(accountId);
   if (hit && Date.now() - hit.at < 2500) return hit.data;
-  const data = await view('get_player', { account_id: accountId });
+  // V4 views (shop coins, tools, bets, tournament entry) fail on an older contract: leave them out then.
+  const opt = <T,>(p: Promise<T>) => p.catch(() => null);
+  const week = world ? Math.floor(world.town.day / world.params.days_per_week) : undefined;
+  const [base, holdings, tools, prediction, tournament] = await Promise.all([
+    view<any>('get_player', { account_id: accountId }),
+    opt(view('get_coin_holdings', { account_id: accountId })),
+    opt(view('get_tools', { account_id: accountId })),
+    opt(view('get_prediction', { week, account_id: accountId })),
+    opt(view('get_tournament', { account_id: accountId })),
+  ]);
+  const data = { ...base, holdings, tools, prediction, tournament };
   playerCache.set(accountId, { at: Date.now(), data });
   return data;
 }
@@ -140,6 +175,20 @@ async function authenticate(req: IncomingMessage, body: string): Promise<string>
     players.add(accountId, accountId.split('.')[0]);
   }
   return accountId;
+}
+
+// ---------- marks on chain: each new mark becomes a soulbound NFT, one call at a time ----------
+
+let markChain: Promise<unknown> = Promise.resolve();
+function chainMark(player: string, mark: string) {
+  markChain = markChain.then(async () => {
+    try {
+      await game.callFunction({ contractId: TOWN, methodName: 'mint_mark', args: { player, mark }, gas: teraToGas(30) });
+    } catch (e) {
+      // An older contract has no mint_mark; the mark still counts in the game.
+      console.warn(`[marks] ${player} ${mark}:`, (e instanceof Error ? e.message : String(e)).slice(0, 120));
+    }
+  });
 }
 
 // ---------- gathering: one gather_batch transaction per window ----------
@@ -232,7 +281,60 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
 
   if (req.method === 'GET' && url.pathname === '/api/world') {
     if (!world) throw new HttpError(503, 'reading the town, try again in a moment');
-    return { ...world, agents: getReports(), suppliers: getSupplierBids(), guildViews, market, townsfolk: getTownsfolk() };
+    return {
+      ...world, agents: getReports(), suppliers: getSupplierBids(), guildViews, market, townsfolk: getTownsfolk(),
+      event: eventFor(world.town.week), shock: activeShock(), styles: styles.current(world.shops),
+      bounties: bounties.view(world.town.week, guildViews),
+      bells: activeBells(),
+    };
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/feed') {
+    // The town crier: recent moments, plain headlines about the market, and next week's event vote.
+    if (!world) throw new HttpError(503, 'reading the town, try again in a moment');
+    return { items: feed.recent(40), standout: feed.standout(world), shock: activeShock(), nextWeek: world.town.week + 1, vote: tally(world.town.week + 1) };
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/prices') {
+    return { ...feed.priceHistory(), shocks: shockHistory() };
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/deed/vote') {
+    // Deed holders choose next week's event. One vote per deed holder per week; it can change.
+    const accountId = await authenticate(req, body);
+    const { eventId } = JSON.parse(body);
+    if (!world.shops.some((s: any) => s.deed_holder === accountId)) throw new HttpError(403, 'Only a deed holder can vote on the town’s events');
+    try { voteEvent(world.town.week + 1, accountId, String(eventId)); } catch (e) { throw new HttpError(400, e instanceof Error ? e.message : String(e)); }
+    return { week: world.town.week + 1, vote: tally(world.town.week + 1), mine: myVote(world.town.week + 1, accountId) };
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/deed/style') {
+    // A deed holder names and decorates their shop. It shows on the island for everyone.
+    const accountId = await authenticate(req, body);
+    const { shopId, title, color, flag } = JSON.parse(body);
+    const shop = world.shops.find((s: any) => s.shop.id === shopId);
+    if (!shop || shop.deed_holder !== accountId) throw new HttpError(403, 'Only the deed holder can decorate this shop');
+    try { styles.set(String(shopId), accountId, { title, color, flag }); } catch (e) { throw new HttpError(400, e instanceof Error ? e.message : String(e)); }
+    feed.post({ kind: 'deed', text: `${accountId.split('.')[0]} renamed their shop: “${styles.current(world.shops)[shopId]?.title}”`, who: accountId });
+    return styles.current(world.shops)[shopId];
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/records') {
+    // Town records, plus the leaders the server can see from its own player files.
+    const all = players.all();
+    const top = (pick: (p: (typeof all)[number]) => number) =>
+      all.map(p => ({ who: p.accountId, value: pick(p) })).filter(x => x.value > 0).sort((a, b) => b.value - a.value).slice(0, 5);
+    const weeks: any[] = world?.weeks ?? [];
+    const bestWeek = weeks.reduce((b: any, w: any) => (!b || Number(w.counted) > Number(b.counted) ? w : b), null);
+    return {
+      records: Object.entries(records.all()).map(([id, r]) => ({ id, ...records.RECORD_LABELS[id as records.RecordId], ...r })),
+      bestWeek: bestWeek ? { week: bestWeek.week, traded: Number(bestWeek.counted) / 1e6, target: Number(bestWeek.target) / 1e6, hit: bestWeek.hit } : null,
+      bestStreak: world?.town.best_streak ?? 0,
+      topSellers: top(p => p.progress.stats.sold),
+      topGatherers: top(p => p.progress.stats.gathered),
+      topMarks: top(p => Object.values(p.progress.marks ?? {}).filter(Boolean).length),
+      marks: prog.MARKS,
+    };
   }
 
   if (req.method === 'GET' && url.pathname === '/api/player') {
@@ -293,16 +395,88 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
       if (q) done.push(q.title);
     };
     let gained = 0;
-    if (c.method === 'sell') { gained = meri(c.value) * prog.XP.perMeriSold; p.progress.stats.sold += meri(c.value); quest('sell'); }
-    if (c.method === 'deliver') { gained = meri(c.value) * prog.XP.perMeriDelivered; p.progress.stats.delivered += meri(c.value); quest('deliver'); }
-    if (c.method === 'bid_for_deed') { gained = prog.XP.deedBid; quest('deed'); }
+    const marks: string[] = [];
+    const markIt = (id: string) => {
+      const m = prog.mark(p.progress, id);
+      if (m) {
+        marks.push(m);
+        chainMark(accountId, id);
+      }
+    };
+    const exact = (v: unknown) => Number(v ?? 0) / 1e6;
+    const shopName = (id: unknown) => world?.shops.find((s: any) => s.shop.id === id)?.shop.name ?? String(id);
+    let newRecord: string | null = null;
+    const offer = (id: records.RecordId, value: number, detail: string) => {
+      if (records.offer(id, { who: accountId, value, detail, tx: String(txHash) })) newRecord = records.RECORD_LABELS[id].title;
+    };
+    if (c.method === 'sell') {
+      gained = meri(c.value) * prog.XP.perMeriSold;
+      p.progress.stats.sold += meri(c.value);
+      quest('sell');
+      p.progress.soldTo = [...new Set([...(p.progress.soldTo ?? []), String(c.args.shop_id)])];
+      if (p.progress.soldTo.length >= 4) markIt('buyers');
+      if (world) bounties.credit(world.town.week, guildViews, accountId, String(c.args.item), Number(c.args.quantity));
+      offer('sale', exact(c.value), `${c.args.quantity} ${c.args.item} to ${shopName(c.args.shop_id)}`);
+    }
+    if (c.method === 'deliver') {
+      gained = meri(c.value) * prog.XP.perMeriDelivered;
+      p.progress.stats.delivered += meri(c.value);
+      quest('deliver');
+      markIt('contract');
+      offer('delivery', exact(c.value), `${c.args.quantity} goods for contract #${c.args.job_id}`);
+    }
+    if (c.method === 'bid_for_deed') {
+      gained = prog.XP.deedBid;
+      quest('deed');
+      markIt('deed');
+      offer('bid', exact(c.args.amount), `for ${shopName(c.args.shop_id)}`);
+    }
     if (c.method === 'pay_guild') gained = prog.XP.guildPayIn;
-    if (c.method === 'claim_festival') { gained = prog.XP.festivalClaim; p.progress.stats.festival = (p.progress.stats.festival ?? 0) + meri(c.value); }
+    if (c.method === 'claim_festival') {
+      gained = prog.XP.festivalClaim;
+      p.progress.stats.festival = (p.progress.stats.festival ?? 0) + meri(c.value);
+      markIt('festival');
+    }
+    // V4: social money, boosts, predictions, shop coins, the tournament, crafting.
+    const who = p.name || accountId.split('.')[0];
+    const amt = (v: unknown) => exact(v).toFixed(2);
+    const KEEPERS: Record<string, string> = { lumberyard: 'Brann', mine: 'Petra', granary: 'Wen', smith: 'Hilde', baker: 'Oswin', store: 'Mabel' };
+    if (c.method === 'tip') {
+      gained = 2;
+      const memo = c.args.memo ? `: “${String(c.args.memo).slice(0, 80)}”` : '';
+      feed.post({ kind: 'tip', text: `${who} tipped ${String(c.args.receiver_id).split('.')[0]} ${amt(c.args.amount)} MERI${memo}`, who: accountId, tx: String(txHash) });
+    }
+    if (c.method === 'burn_for_boost') gained = 5; // the crier announces boosts as it reads them from the chain
+    if (c.method === 'predict') {
+      gained = 3;
+      feed.post({ kind: 'bet', text: `${who} staked ${amt(c.args.amount)} MERI that this week’s Festival will be ${c.args.hit ? 'hit' : 'missed'}`, who: accountId, tx: String(txHash) });
+    }
+    if (c.method === 'claim_prediction' && exact(c.value) > 0) feed.post({ kind: 'bet', text: `${who} won ${amt(c.value)} MERI on the Festival prediction`, who: accountId, tx: String(txHash) });
+    if (c.method === 'buy_shop_coin' || c.method === 'sell_shop_coin') {
+      gained = 3;
+      const ticker = `$${(KEEPERS[c.args.shop_id] ?? c.args.shop_id).toUpperCase()}`;
+      feed.post({ kind: 'coin', text: `${who} ${c.method === 'buy_shop_coin' ? 'bought' : 'sold'} ${c.args.coins} ${ticker} for ${amt(c.value)} MERI`, who: accountId, tx: String(txHash) });
+    }
+    if (c.method === 'enter_tournament') {
+      gained = 5;
+      feed.post({ kind: 'tourney', text: `${who} entered this week’s tournament. Biggest single sale wins the pot`, who: accountId, tx: String(txHash) });
+    }
+    if (c.method === 'craft_tool') {
+      gained = 15;
+      const name = { axe: 'a Silver Axe', pick: 'an Iron Pick', sickle: 'a Golden Sickle' }[String(c.args.kind)] ?? 'a tool';
+      feed.post({ kind: 'craft', text: `${who} forged ${name} at the Forge`, who: accountId, tx: String(txHash) });
+    }
     const before = prog.levelOf(p.progress.xp).level;
     p.progress.xp += gained;
     players.save();
     const after = prog.levelOf(p.progress.xp);
-    return { xp: gained, quests: done, levelUp: after.level > before ? after : null };
+    const nm = p.name || accountId.split('.')[0];
+    if (c.method === 'sell' && exact(c.value) >= 10) feed.post({ kind: 'sale', text: `${nm} sold ${c.args.quantity} ${c.args.item} to ${shopName(c.args.shop_id)} for ${exact(c.value).toFixed(2)} MERI`, who: accountId, tx: String(txHash) });
+    if (c.method === 'deliver') feed.post({ kind: 'contract', text: `${nm} filled a delivery contract for ${exact(c.value).toFixed(2)} MERI`, who: accountId, tx: String(txHash) });
+    if (c.method === 'bid_for_deed') feed.post({ kind: 'deed', text: `${nm} bid ${exact(c.args.amount).toFixed(0)} MERI for ${shopName(c.args.shop_id)}`, who: accountId, tx: String(txHash) });
+    if (c.method === 'claim_festival') feed.post({ kind: 'festival', text: `${nm} claimed a Festival share of ${exact(c.value).toFixed(2)} MERI`, who: accountId, tx: String(txHash) });
+    if (newRecord) feed.post({ kind: 'record', text: `New town record: ${newRecord}, by ${nm}`, who: accountId, tx: String(txHash) });
+    return { xp: gained, quests: done, marks, record: newRecord, levelUp: after.level > before ? after : null };
   }
 
   if (req.method === 'GET' && url.pathname === '/api/leaders') {
@@ -311,7 +485,7 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
 
   if (req.method === 'POST' && url.pathname === '/api/gather') {
     const accountId = await authenticate(req, body);
-    const { ground, swings } = JSON.parse(body);
+    const { ground, swings, timing, tool } = JSON.parse(body);
     const item = GROUNDS[ground as keyof typeof GROUNDS];
     if (!item) throw new HttpError(400, 'no such ground');
     const n = Math.max(1, Math.min(R.maxSwingsPerRequest, Number(swings) | 0));
@@ -323,19 +497,66 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
     const wanted = withTool * R.toolYield + (affordable - withTool);
     players.setStamina(p, stamina - affordable * R.swingCost);
     p.toolUses -= withTool;
-    const got = await enqueue({ player: accountId, item, quantity: wanted });
+    // A crafted tool NFT adds a unit per swing on chain; the contract checks the player holds it.
+    const got = await enqueue({ player: accountId, item, quantity: wanted, ...(typeof tool === 'string' && /^tool-\d+$/.test(tool) ? { tool } : {}) });
     // Swings that found nothing (the ground was bare) cost nothing.
     if (got < wanted) {
       const wasted = Math.floor((wanted - got) / (withTool > 0 ? R.toolYield : 1));
       players.setStamina(p, players.staminaNow(p, dayMs) + wasted * R.swingCost);
     }
     const before = prog.levelOf(p.progress.xp).level;
-    p.progress.xp += got * prog.XP.perUnitGathered;
+    // The timing ring: a well-timed swing earns bonus XP (never extra goods, so it can't be farmed
+    // for coin). The grade comes from the client; at worst a cheat earns a little XP.
+    const grade = got > 0 && (timing === 'perfect' || timing === 'good') ? timing : 'ok';
+    const bonus = grade === 'perfect' ? 3 : grade === 'good' ? 1 : 0;
+    p.progress.xp += got * prog.XP.perUnitGathered + bonus;
     p.progress.stats.gathered += got;
     const q = got > 0 ? prog.complete(p.progress, 'swing') : null;
+    const marks: string[] = [];
+    const markIt = (id: string) => {
+      const m = prog.mark(p.progress, id);
+      if (m) {
+        marks.push(m);
+        chainMark(accountId, id);
+      }
+    };
+    let record: string | null = null;
+    if (got > 0) {
+      markIt(item);
+      if (world) bounties.credit(world.town.week, guildViews, accountId, item, got);
+      if (grade === 'perfect') {
+        p.progress.perfect = (p.progress.perfect ?? 0) + 1;
+        p.progress.perfectRun = (p.progress.perfectRun ?? 0) + 1;
+        p.progress.bestPerfectRun = Math.max(p.progress.bestPerfectRun ?? 0, p.progress.perfectRun);
+        markIt('perfect');
+        if (p.progress.perfect >= 10) markIt('perfect10');
+        if (records.offer('perfectRun', { who: accountId, value: p.progress.perfectRun, detail: `perfect swings in a row` })) record = records.RECORD_LABELS.perfectRun.title;
+      } else p.progress.perfectRun = 0;
+      if (records.offer('gather', { who: accountId, value: p.progress.stats.gathered, detail: 'goods gathered in all' })) record ??= records.RECORD_LABELS.gather.title;
+    }
     players.save();
+    if (grade === 'perfect' && [5, 10, 20].includes(p.progress.perfectRun ?? 0)) feed.post({ kind: 'perfect', text: `${p.name} landed ${p.progress.perfectRun} perfect swings in a row`, who: accountId });
+    if (record) feed.post({ kind: 'record', text: `New town record: ${record}, by ${p.name}`, who: accountId });
     const after = prog.levelOf(p.progress.xp);
-    return { item, gathered: got, wanted, stamina: players.staminaNow(p, dayMs), toolUses: p.toolUses, xp: got, quests: q ? [q.title] : [], levelUp: after.level > before ? after : null };
+    return {
+      item, gathered: got, wanted, stamina: players.staminaNow(p, dayMs), toolUses: p.toolUses, xp: got + bonus, timing: grade, bonusXp: bonus,
+      perfectRun: p.progress.perfectRun ?? 0, quests: q ? [q.title] : [], marks, record, levelUp: after.level > before ? after : null,
+    };
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/chest') {
+    // The daily chest: stamina, XP and sometimes a borrowed tool, more for each day in a row.
+    const accountId = await authenticate(req, body);
+    const p = players.get(accountId)!;
+    const before = prog.levelOf(p.progress.xp).level;
+    const got = prog.openChest(p.progress);
+    if (!got) throw new HttpError(409, 'Today’s chest is already open. Come back tomorrow.');
+    players.setStamina(p, Math.min(prog.maxStamina(p.progress), players.staminaNow(p, dayMs) + got.stamina));
+    p.toolUses += got.toolUses;
+    players.save();
+    feed.post({ kind: 'chest', text: got.streak >= 3 ? `${p.name} opened the daily chest: ${got.streak} days in a row` : '', who: accountId });
+    const after = prog.levelOf(p.progress.xp);
+    return { ...got, stamina: players.staminaNow(p, dayMs), toolUses: p.toolUses, xp: got.xp, levelUp: after.level > before ? after : null };
   }
 
   if (req.method === 'POST' && url.pathname === '/api/use') {
@@ -349,14 +570,25 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
     const before = prog.levelOf(p.progress.xp).level;
     const done: string[] = [];
     let built = 0;
+    const marks: string[] = [];
+    const markIt = (id: string) => {
+      const m = prog.mark(p.progress, id);
+      if (m) {
+        marks.push(m);
+        chainMark(accountId, id);
+      }
+    };
     if (purpose === 'cottage') {
       built = prog.build(p.progress, used.item as 'tool' | 'bread', used.quantity);
       if (p.progress.cottage.level >= 2) {
         const q = prog.complete(p.progress, 'cottage');
         if (q) done.push(q.title);
+        markIt('cottage');
       }
     } else {
+      if (used.item === 'tool') markIt('tool');
       if (used.item === 'bread') {
+        markIt('bread');
         players.setStamina(p, Math.min(prog.maxStamina(p.progress), players.staminaNow(p, dayMs) + used.quantity * R.breadStamina));
         p.progress.xp += prog.XP.eat;
         const q = prog.complete(p.progress, 'eat');
@@ -366,7 +598,7 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
     }
     players.save();
     const after = prog.levelOf(p.progress.xp);
-    return { stamina: players.staminaNow(p, dayMs), toolUses: p.toolUses, built, cottage: p.progress.cottage, quests: done, levelUp: after.level > before ? after : null };
+    return { stamina: players.staminaNow(p, dayMs), toolUses: p.toolUses, built, cottage: p.progress.cottage, quests: done, marks, levelUp: after.level > before ? after : null };
   }
 
   throw new HttpError(404, 'not found');

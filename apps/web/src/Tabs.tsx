@@ -7,7 +7,9 @@ import { useInstall } from './phone';
 
 export type Tab = 'town' | 'quest' | 'pack' | 'ledger';
 
-export function TabBar({ active, onTab, gfx, onGfx, onGuide, onLeaders, onAccount, onFastForward }: {
+export function TabBar({ active, onTab, gfx, onGfx, onGuide, onLeaders, onAccount, onFastForward, onBooks, onMarks }: {
+  onBooks: () => void;
+  onMarks: () => void;
   active: Tab | null;
   onTab: (t: Tab) => void;
   gfx: '3d' | '2d';
@@ -48,6 +50,8 @@ export function TabBar({ active, onTab, gfx, onGfx, onGuide, onLeaders, onAccoun
         <div className="more-sheet" role="menu" aria-label="More">
           {row('book', 'How to play', onGuide)}
           {row('rosette', 'Leaderboard', onLeaders)}
+          {row('scroll', 'Town books', onBooks, 'Where every coin is, and town records')}
+          {row('flag', 'Your marks', onMarks, 'The collection: earn all twelve')}
           {row('forward', 'Fast-forward a week', onFastForward, 'Replay the next market week in a minute')}
           {row(gfx === '3d' ? 'map' : 'island', gfx === '3d' ? 'Flat map' : '3D island', onGfx, gfx === '3d' ? 'Lighter on older phones' : undefined)}
           <div className="more-toggles">

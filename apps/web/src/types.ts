@@ -164,11 +164,35 @@ export interface Me {
   quests: QuestView[];
   current: QuestView | null;
   stats: { gathered: number; sold: number; delivered: number; festival?: number };
+  marks?: (MarkDef & { done: boolean })[];
+  fullSetBonus?: number;
+  perfect?: number;
+  bestPerfectRun?: number;
+  soldTo?: string[];
+  chest?: { available: boolean; streak: number; best: number; nextStreak: number; next: { stamina: number; xp: number; toolUses: number } };
 }
+
+export interface MarkDef { id: string; title: string; hint: string }
 
 /** What the server says an action earned. */
 export interface Earned {
   xp?: number;
   quests?: string[];
+  /** Marks of the trade newly earned. */
+  marks?: string[];
+  /** The title of a town record this action just set. */
+  record?: string | null;
   levelUp?: { level: number; title: string } | null;
 }
+
+/** This week's town event, from the server. */
+export interface TownEventView {
+  id: string;
+  title: string;
+  blurb: string;
+  item: Item;
+  shops: string[];
+  boostBps: number;
+}
+
+export type SwingTiming = 'perfect' | 'good' | 'ok';

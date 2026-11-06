@@ -28,7 +28,8 @@ the map shows where to go. 📖 opens this guide in the game.
 
 ## Making money
 
-1. **Gather.** Swing at a ground. Each swing of 4 costs 20 stamina and yields 1 per swing (2 with a tool). The grounds are shared and regrow through the day, so if everyone is at the Mine, the Forest is the better trip.
+1. **Gather.** Swing at a ground. Each swing of 4 costs 20 stamina and yields 1 per swing (2 with a tool). The grounds are shared and regrow through the day, so if everyone is at the Mine, the Forest is the better trip. Tap **Swing** once to wind up, then again as the closing ring meets the dashed one: a perfect strike earns bonus XP (never extra goods).
+1. **Follow the week's event.** Each market week has one event (the Harvest fair, an Early frost, the Rail survey) that raises demand for one good: the shopkeepers it touches raise their targets, so that good pays more all week. It's shown in the Festival panel and at the ground it affects.
 2. **Sell to the best buyer.** Every shop prices with one rule: *the less it has, the more it pays.* A shop that has run out pays up to 4× the usual price; a full one pays pennies. Each unit you sell lowers the price a little, so split big loads across shops. Hover any price to see exactly how it was worked out.
 3. **Take contracts.** When a merchant runs short, it posts a delivery contract on the Notice Board, with the money already locked in escrow. Deliver and you're paid on the spot, usually above market price.
 4. **Mind the spread.** Shops sell for about 25% more than they buy. Buying in one shop and selling in another only pays when their prices drift far apart.
@@ -43,6 +44,8 @@ the map shows where to go. 📖 opens this guide in the game.
 | ⭐ XP | Earned by gathering, selling, delivering, building, bidding | Levels and titles: Wanderer → Peddler → Hauler → Trader → Merchant → Burgher → Patron of Meridian |
 
 XP only counts for things that actually happened on the chain; the server checks each transaction.
+
+**Marks of the trade.** Twelve marks, one for each part of town life (gather each good, a perfect swing, ten of them, sell to four different shops, eat, use a tool, fill a contract, build your cottage, bid for a deed, claim a Festival share). Each is worth XP, and the full set raises your stamina cap by 25 for good. See them, the **town records** and **where every coin sits** in the *Town books* (the scroll button, or More on a phone).
 
 ## Owning the town
 

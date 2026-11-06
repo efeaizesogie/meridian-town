@@ -170,7 +170,7 @@ export function TownMap({ world, onOpen, selected, questPlace, here, phone = fal
       onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onOpen(id))}
     >
       {children}
-      <text className="map-label" x={SPOTS[id].x} y={SPOTS[id].y + (id.startsWith('g:') ? 72 : id.startsWith('s:') ? 70 : 58)} textAnchor="middle">{SPOTS[id].label}</text>
+      <text className="map-label" x={SPOTS[id].x} y={SPOTS[id].y + (id.startsWith('g:') ? 72 : id.startsWith('s:') ? 70 : 58)} textAnchor="middle">{(id.startsWith('s:') && world.styles?.[id.slice(2)]?.title) || SPOTS[id].label}</text>
     </g>
   );
 

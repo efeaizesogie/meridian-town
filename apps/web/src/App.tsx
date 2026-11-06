@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, call, getJSON, loadConfig, me, signOut, view, type Config } from './near';
-import { ITEMS, fmt, type AgentReport, type Auction, type CaravanView, type Earned, type GuildView, type Item, type Job, type Me, type Params, type Player, type Shop, type SupplierInfo, type TownView, type WeekResult } from './types';
+import { ITEMS, fmt, type AgentReport, type Auction, type CaravanView, type Earned, type GuildView, type Item, type Job, type Me, type Params, type Player, type Shop, type SupplierInfo, type SwingTiming, type TownEventView, type TownView, type WeekResult } from './types';
 export type { Params };
 import { Join } from './Join';
 import { AccountPanel, Earnings } from './Account';
@@ -16,6 +16,11 @@ import { Guide, Leaders } from './Guide';
 import { play, reducedMotion, startAmbience, startMusic } from './juice';
 import { World3D } from './world/World3D';
 import { Icon } from './Icon';
+import { TownBooks, type BooksTab } from './Books';
+import { Judge } from './Judge';
+import { EventCard } from './Places';
+import { ChestButton, CrierTicker, ShockBanner, useFeed, type ShockView, type ShopStyle } from './Crier';
+import { toolFor } from './Market';
 
 const savedGfx = (): '3d' | '2d' => {
   try {
@@ -43,6 +48,14 @@ export interface World {
   market?: { exchange: string; poolId: number; meri: string; wnear: string; nearPerMeri: number; meriInPool: number; nearInPool: number } | null;
   /** What the game-run residents did last; shown so players can see the town is busy. */
   townsfolk?: { id: string; name: string; did: string; at: number }[];
+  /** This week's town event (from the server; older servers don't send one). */
+  event?: TownEventView;
+  /** A market shock running right now, if any. */
+  shock?: ShockView | null;
+  /** Deed holders' names and colours for their shops. */
+  styles?: Record<string, ShopStyle>;
+  /** Each guild's bounty this week. */
+  bounties?: Record<string, { week: number; item: Item; qty: number; done: number; met: boolean; contributors: { who: string; qty: number }[]; pot: string; recipients: [string, string][] }>;
 }
 
 export interface LogLine {
@@ -88,7 +101,12 @@ export default function App() {
   const [log, setLog] = useState<LogLine[]>([]);
   const [place, setPlace] = useState<Place | null>(null);
   const [here, setHere] = useState<Place | null>(null);
-  const [modal, setModal] = useState<'guide' | 'leaders' | 'ff' | 'account' | 'earnings' | null>(null);
+  const [modal, setModal] = useState<'guide' | 'leaders' | 'ff' | 'account' | 'earnings' | 'books' | null>(null);
+  const [booksTab, setBooksTab] = useState<BooksTab>('books');
+  const openBooks = (t: BooksTab = 'books') => { setBooksTab(t); setModal('books'); };
+  // Looking around before picking a name: the live town, read-only.
+  const [guest, setGuest] = useState(false);
+  const feed = useFeed();
   const [floaters, setFloaters] = useState<Floater[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const phone = usePhone();
@@ -185,6 +203,11 @@ export default function App() {
       toast(`Quest complete: ${q}`, 'quest');
       play('quest');
     }
+    for (const m of e.marks ?? []) toast(`New mark: ${m}`, 'quest');
+    if (e.record) {
+      toast(`Town record! ${e.record}`, 'level');
+      play('level');
+    }
     if (e.levelUp) {
       const newTitle = e.levelUp.title !== world?.me?.title;
       toast(newTitle ? `Level ${e.levelUp.level}! You are now a ${e.levelUp.title}.` : `Level ${e.levelUp.level}!`, 'level');
@@ -221,9 +244,17 @@ export default function App() {
   };
 
   if (!config) return <div className="loading">Opening the town gates…</div>;
+  if (location.pathname.replace(/\/+$/, '') === '/judge') {
+    return <Judge config={config} world={world} account={account} onJoined={id => { setAccount(id); refresh(true).catch(() => {}); }} refresh={() => refresh(true)} />;
+  }
+  if (!account && guest && world) {
+    return <GuestTown world={world} gfx={gfx} phone={phone} onGfx={() => switchGfx(gfx === '3d' ? '2d' : '3d')} onPlay={() => setGuest(false)} onBooks={openBooks} books={modal === 'books' ? (
+      <TownBooks world={world} account={null} explorer={explorerFor(config.network)} town={config.town} start={booksTab} feed={feed} onClose={() => setModal(null)} />
+    ) : null} />;
+  }
   if (!account) {
     return (
-      <Join onJoined={(id, isNew) => {
+      <Join onLookAround={() => setGuest(true)} onJoined={(id, isNew) => {
         setAccount(id);
         if (isNew) setModal('guide');
         say(isNew ? `Welcome to Meridian, ${id.split('.')[0]}. Follow the quest scroll to get started.` : `Welcome back, ${id.split('.')[0]}.`, 'good');
@@ -238,14 +269,17 @@ export default function App() {
   };
 
   const actions: Actions = {
-    gather: ground => {
+    gather: (ground, timing = 'ok') => {
       const p = `g:${ground}` as Place;
       play('swing');
-      buzz(8);
+      buzz(timing === 'perfect' ? [10, 40, 10] : 8);
+      if (timing !== 'ok') float(p, timing === 'perfect' ? 'Perfect!' : 'Good', 'xp');
       return act('Gather', async () => {
-        const r = await api<{ item: Item; gathered: number; wanted: number } & Earned>('/api/gather', { ground, swings: config.rules.maxSwingsPerRequest });
+        const tool = toolFor(world, ({ forest: 'wood', mine: 'ore', fields: 'wheat' } as Record<string, Item>)[ground]);
+        const r = await api<{ item: Item; gathered: number; wanted: number; bonusXp?: number; perfectRun?: number } & Earned>('/api/gather', { ground, swings: config.rules.maxSwingsPerRequest, timing, tool: tool?.token_id });
         if (r.gathered) float(p, `+${r.gathered} ${r.item}`, 'gain');
         else float(p, 'bare!', 'bad');
+        if ((r.perfectRun ?? 0) >= 3) toast(`${r.perfectRun} perfect swings in a row!`, 'quest');
         celebrate(r, p);
         return r.gathered
           ? `You gathered ${r.gathered} ${r.item}${r.gathered < r.wanted ? '. The ground is nearly bare' : ''}.`
@@ -342,7 +376,7 @@ export default function App() {
     <div className={`game ${phone ? 'phone' : ''}`}>
       <Hud world={world} account={account} purseRef={purseRef}
         onAccount={() => setModal('account')} onEarnings={() => setModal('earnings')}
-        onGuide={() => setModal('guide')} onLeaders={() => setModal('leaders')} onFestival={() => open('festival')}
+        onGuide={() => setModal('guide')} onLeaders={() => setModal('leaders')} onFestival={() => open('festival')} onBooks={() => openBooks()}
         gfx={gfx} onGfx={() => switchGfx(gfx === '3d' ? '2d' : '3d')} />
       <main className={`stage ${place ? 'with-drawer' : ''}`}>
         <div className={`map-wrap ${gfx === '2d' ? 'flat' : ''}`}>
@@ -355,11 +389,18 @@ export default function App() {
             ))}
           </div>
           <QuestTracker world={world} step={step} onGo={() => qp && open(qp)} />
+          {world.shock && <div className="map-shock"><ShockBanner shock={world.shock} /></div>}
           <div className="map-tools">
+            <ChestButton world={world} act={act} onOpened={r => {
+              float('cottage', `+${r.stamina} stamina`, 'gain');
+              play('level');
+              celebrate({ xp: r.xp, levelUp: r.levelUp }, null);
+            }} />
             <button onClick={() => setModal('ff')} title="Replay the next market week in a minute"><Icon name="forward" /> Fast-forward</button>
           </div>
         </div>
         <div className="ticker">
+          <CrierTicker world={world} feed={feed} onOpen={() => openBooks('crier')} showShock={false} />
           <TownLog log={log} busy={busy} />
           {(world.townsfolk?.length ?? 0) > 0 && (
             <p className="around" title="Townsfolk are residents the game runs. They trade by the same rules as you.">
@@ -376,14 +417,16 @@ export default function App() {
       </main>
       {phone && (
         <TabBar active={tab} onTab={onTab} gfx={gfx} onGfx={() => switchGfx(gfx === '3d' ? '2d' : '3d')}
-          onGuide={() => setModal('guide')} onLeaders={() => setModal('leaders')} onAccount={() => setModal('account')} onFastForward={() => setModal('ff')} />
+          onGuide={() => setModal('guide')} onLeaders={() => setModal('leaders')} onAccount={() => setModal('account')} onFastForward={() => setModal('ff')}
+          onBooks={() => openBooks()} onMarks={() => openBooks('marks')} />
       )}
       <div className="toasts" aria-live="assertive">
         {toasts.map(t => <div key={t.id} className={`toast ${t.kind}`}>{t.text}</div>)}
       </div>
+      {modal === 'books' && <TownBooks world={world} account={account} explorer={explorerFor(config.network)} town={config.town} start={booksTab} feed={feed} onClose={() => setModal(null)} />}
       {modal === 'ff' && <FastForward world={world} onClose={() => setModal(null)} />}
       {modal === 'guide' && <Guide onClose={() => setModal(null)} />}
-      {modal === 'leaders' && <Leaders account={account} world={world} onClose={() => setModal(null)} />}
+      {modal === 'leaders' && <Leaders account={account} world={world} onClose={() => setModal(null)} act={act} busy={busy} />}
       {modal === 'account' && <AccountPanel network={config.network} onClose={() => setModal(null)} onSignOut={() => { signOut(); setModal(null); setAccount(null); }} />}
       {modal === 'earnings' && <Earnings world={world} account={account} network={config.network} onClose={() => setModal(null)} act={act} busy={busy} />}
     </div>
@@ -391,3 +434,71 @@ export default function App() {
 }
 
 export const itemIndex = (item: Item) => ITEMS.indexOf(item);
+export const explorerFor = (network: string) => (network === 'mainnet' ? 'https://nearblocks.io' : 'https://testnet.nearblocks.io');
+
+/** The live town, read-only, for someone who hasn't picked a name yet. */
+function GuestTown({ world, gfx, phone, onGfx, onPlay, onBooks, books }: {
+  world: World;
+  gfx: '3d' | '2d';
+  phone: boolean;
+  onGfx: () => void;
+  onPlay: () => void;
+  onBooks: (t?: BooksTab) => void;
+  books: React.ReactNode;
+}) {
+  const [peek, setPeek] = useState<Place | null>(null);
+  const shop = peek?.startsWith('s:') ? world.shops.find(s => s.shop.id === peek.slice(2)) : null;
+  const said = shop ? world.agents?.[shop.shop.id] : null;
+  const counted = Number(world.town.week_counted) / 1e6;
+  const target = Number(world.town.week_target) / 1e6;
+  return (
+    <div className={`game guest ${phone ? 'phone' : ''}`}>
+      <header className="guest-bar">
+        <a className="gate-back" href="/">Meridian</a>
+        <span className="muted">You’re looking around the live town. Day {world.town.day + 1}, {counted.toFixed(0)} of {target.toFixed(0)} MERI traded toward this week’s Festival.</span>
+        <div className="row">
+          <button className="small" onClick={() => onBooks('books')}>Town books</button>
+          <button className="small" onClick={onGfx}>{gfx === '3d' ? 'Flat map' : '3D island'}</button>
+          <button className="small primary" onClick={onPlay}>Pick a name and play</button>
+        </div>
+      </header>
+      <main className="stage">
+        <div className={`map-wrap ${gfx === '2d' ? 'flat' : ''}`}>
+          {gfx === '3d'
+            ? <World3D world={world} onOpen={setPeek} selected={peek} questPlace={null} account="visitor" working={false} onFail={onGfx} />
+            : <TownMap world={world} onOpen={setPeek} selected={peek} questPlace={null} here={peek} phone={phone} />}
+          {peek && (
+            <aside className="guest-peek" aria-live="polite">
+              <header>
+                <strong>{SPOTS[peek]?.label}</strong>
+                <button className="link" onClick={() => setPeek(null)} aria-label="Close"><Icon name="close" /></button>
+              </header>
+              {shop ? (
+                <>
+                  <p className="muted">{shop.shop.open ? `Run by ${shop.shop.agent ? 'an AI shopkeeper with its own NEAR account' : 'nobody'}. Till: ${fmt(shop.cash, 0)} MERI.` : 'Closed: its deed is up for auction.'}</p>
+                  {said && <blockquote>“{said.say}”<footer>{said.mode === 'llm' ? 'thinking with NEAR AI' : 'by its strategy rules'}</footer></blockquote>}
+                  <p className="muted">
+                    {ITEMS.flatMap((it, i) => [
+                      shop.shop.buys.includes(it) ? (BigInt(shop.bid[i]) > 0n ? `pays ${fmt(shop.bid[i])} for ${it}` : `full of ${it}`) : null,
+                      shop.shop.sells.includes(it) && shop.stock[i] > 0 ? `sells ${it} at ${fmt(shop.ask[i])}` : null,
+                    ]).filter(Boolean).join(' · ')}
+                  </p>
+                </>
+              ) : (
+                <p className="muted">{peek.startsWith('g:') ? 'Anyone can gather here. Every swing mints real goods into your NEAR account.' : peek === 'festival' ? 'Where the town celebrates when it hits its weekly target.' : 'Pick a name to step inside.'}</p>
+              )}
+              <button className="primary small" onClick={onPlay}>Pick a name to trade here</button>
+            </aside>
+          )}
+        </div>
+        <div className="ticker">
+          {world.event && <EventCard world={world} compact />}
+          {(world.townsfolk?.length ?? 0) > 0 && (
+            <p className="around"><strong>Around town:</strong> {[...world.townsfolk!].sort((a, b) => b.at - a.at).slice(0, 3).map(t => `${t.name} ${t.did}`).join('. ')}.</p>
+          )}
+        </div>
+      </main>
+      {books}
+    </div>
+  );
+}

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { Act, World } from './App';
 import { call, canUseGuild, guildCall } from './near';
 import { fmt, short, type GuildView } from './types';
+import { Icon } from './Icon';
 
 const b64 = (o: object) => btoa(JSON.stringify(o));
 
@@ -80,6 +81,28 @@ function Guild({ g, world, account, busy, act, town, expanded, onToggle }: {
       {expanded && (
         <div className="guild-body">
           <p className="muted">{g.purpose}</p>
+          {world.bounties?.[g.id] && (() => {
+            const b = world.bounties[g.id];
+            const mine = b.contributors.find(c => c.who === account)?.qty ?? 0;
+            const proposed = g.proposals.some(p => p.status === 'InProgress' && String(p.description ?? '').startsWith(`Bounty week ${b.week + 1}`));
+            return (
+              <div className={`bounty ${b.met ? 'met' : ''}`}>
+                <span className="event-kicker with-icon"><Icon name={b.item} /> This week’s guild bounty</span>
+                <strong>{b.met ? 'Bounty met!' : `Sell or gather ${b.qty} ${b.item} between you`}</strong>
+                <div className="meter"><div className="meter-fill" style={{ width: `${Math.min(100, (b.done / b.qty) * 100)}%` }} /><span>{b.done} of {b.qty} {b.item}</span></div>
+                <p className="muted">
+                  Members’ sales and gathering of {b.item} count. When it’s met, any member can propose sharing {fmt(b.pot, 0)} MERI (30% of the treasury) by contribution, and the guild votes it through.
+                  {member ? ` Your part so far: ${mine} ${b.item}.` : ''}
+                </p>
+                {b.contributors.length > 0 && <p className="muted">Top hands: {b.contributors.slice(0, 4).map(c => `${short(c.who)} ${c.qty}`).join(', ')}</p>}
+                {member && usable && b.met && b.recipients.length > 0 && (
+                  <button className="small primary" disabled={!!busy || proposed} onClick={() => propose('Propose', `Bounty week ${b.week + 1}: share ${fmt(b.pot, 0)} MERI by contribution`, fnCall('share_out', { recipients: b.recipients }))}>
+                    {proposed ? 'Share-out proposed: vote below' : `Propose the bounty share-out (${fmt(b.pot, 0)} MERI)`}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
           {!usable && <p className="hint">This character joined before the guilds opened, so it has no guild key. New characters get one automatically.</p>}
           {usable && !member && (
             <button className="small primary" disabled={!!busy || pendingJoin} onClick={() => propose('Join', `${short(account)} asks to join`, { AddMemberToRole: { member_id: account, role: 'member' } })}>

@@ -6,7 +6,8 @@ export type IconName =
   | 'wood' | 'ore' | 'wheat' | 'bread' | 'tool'
   | 'coin' | 'stamina' | 'book' | 'rosette' | 'map' | 'island' | 'music' | 'sound' | 'mute'
   | 'door' | 'close' | 'scroll' | 'flag' | 'sack' | 'sun' | 'dusk' | 'moon' | 'forward'
-  | 'axe' | 'pick' | 'sickle' | 'house' | 'key' | 'more' | 'plus' | 'minus';
+  | 'axe' | 'pick' | 'sickle' | 'house' | 'key' | 'more' | 'plus' | 'minus'
+  | 'chest' | 'flame' | 'bell' | 'crier';
 
 const P: Record<IconName, React.ReactNode> = {
   wood: <>
@@ -94,6 +95,24 @@ const P: Record<IconName, React.ReactNode> = {
   flag: <>
     <path className="ic-line" d="M4 18V2.5" />
     <path className="ic-coral" d="M4 3h11l-3 3.5L15 10H4z" />
+  </>,
+  chest: <>
+    <path className="ic-kraft" d="M3 9h14v7.5c0 .8-.7 1.5-1.5 1.5h-11C3.7 18 3 17.3 3 16.5z" />
+    <path className="ic-sand" d="M3 9V7c0-2.2 1.8-4 4-4h6c2.2 0 4 1.8 4 4v2z" />
+    <path className="ic-line" d="M3 9h14" />
+    <rect className="ic-pear" x="8.5" y="8" width="3" height="4" rx="1" />
+  </>,
+  flame: <>
+    <path className="ic-coral" d="M10 2c1 3 4.5 4.5 4.5 9a4.5 4.5 0 0 1-9 0c0-2 1-3.2 2-4 0 1.5.6 2.4 1.5 2.8C9 7.5 8.8 4.6 10 2z" />
+    <path className="ic-pear" d="M10 11c.8 1 2 1.6 2 3.2a2 2 0 0 1-4 0c0-1.2.9-2 2-3.2z" />
+  </>,
+  bell: <>
+    <path className="ic-pear" d="M10 3a5 5 0 0 0-5 5v4l-1.5 2.5h13L15 12V8a5 5 0 0 0-5-5z" />
+    <circle className="ic-kraft" cx="10" cy="16.5" r="1.6" />
+  </>,
+  crier: <>
+    <path className="ic-pear" d="M3 8v4l3 .5L15 16V4L6 7.5z" />
+    <path className="ic-line" d="M6 12.5l1 4h2l-.8-3.6M17 8.5v3" />
   </>,
   sack: <>
     <path className="ic-kraft" d="M7 6h6l1-2.5H6zM6.5 6.5C3.5 9 3 13 4.5 16c.6 1.2 1.8 1.8 3 1.8h5c1.2 0 2.4-.6 3-1.8 1.5-3 1-7-2-9.5z" />

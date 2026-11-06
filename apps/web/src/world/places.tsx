@@ -18,7 +18,10 @@ type V3 = [number, number, number];
 export const faceCentre = (p: V3) => Math.atan2(-p[0], -p[2]);
 
 /** A clickable place: hover lift, a ring for hover / selection / quest, and its name. */
-export function Spot({ place, onOpen, selected, quest, children, ring = 3.2, labelY = 3.6, sign, hot, scale = 1.45 }: {
+export function Spot({ place, onOpen, selected, quest, children, ring = 3.2, labelY = 3.6, sign, hot, scale = 1.45, title, deco }: {
+  /** A deed holder's name for the shop, shown instead of its usual name. */
+  title?: string;
+  deco?: { color: string; flag: string };
   scale?: number;
   place: Place;
   onOpen: (p: Place) => void;
@@ -56,8 +59,8 @@ export function Spot({ place, onOpen, selected, quest, children, ring = 3.2, lab
         </mesh>
       )}
       <Html position={[0, labelY * scale, 0]} center zIndexRange={[8, 0]} style={{ pointerEvents: 'none' }}>
-        <div className={`label3d ${hover || selected ? 'on' : ''}`}>
-          <span role="button" tabIndex={0} onClick={() => onOpen(place)} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onOpen(place)}>{SPOTS[place].label}</span>
+        <div className={`label3d ${hover || selected ? 'on' : ''} ${deco ? `deco deco-${deco.color} flag-${deco.flag}` : ''}`}>
+          <span role="button" tabIndex={0} aria-label={SPOTS[place].label} onClick={() => onOpen(place)} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onOpen(place)}>{title ?? SPOTS[place].label}</span>
           {sign && <b className={hot ? 'hot' : ''}>{sign}</b>}
         </div>
       </Html>

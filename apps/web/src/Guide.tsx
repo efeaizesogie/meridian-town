@@ -1,8 +1,9 @@
 // The town guide and the leaderboard. The guide mirrors docs/HOW-TO-PLAY.md.
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { KEEPERS, fmt, short } from './types';
 import { Icon } from './Icon';
-import type { World } from './App';
+import type { Act, World } from './App';
+import { TipForm, hasV4 } from './Market';
 
 const CHAPTERS: { title: string; body: React.ReactNode }[] = [
   {
@@ -21,7 +22,8 @@ const CHAPTERS: { title: string; body: React.ReactNode }[] = [
     body: (
       <>
         <ol>
-          <li><strong>Gather.</strong> Swing at the Forest (wood), the Mine (ore) or the Fields (wheat). Each swing costs stamina. The grounds are shared and regrow through the day, so a crowded ground runs dry.</li>
+          <li><strong>Gather.</strong> Swing at the Forest (wood), the Mine (ore) or the Fields (wheat). Each swing costs stamina. The grounds are shared and regrow through the day, so a crowded ground runs dry. Tap once to wind up, then again as the rings meet: a perfect strike earns bonus XP.</li>
+          <li><strong>Follow the week’s event.</strong> Each week one event (a fair, a frost, a rail survey) makes one good pay more. It’s in the Festival panel.</li>
           <li><strong>Sell to the best buyer.</strong> Every shop prices with the same rule: <em>the less it has, the more it pays.</em> Read the price signs on the map. A shop that has run out pays up to 4× the usual price; a full one pays pennies.</li>
           <li><strong>Take contracts.</strong> When a merchant runs short, it posts a delivery contract on the notice board with the money locked in escrow. Deliver and you’re paid on the spot, usually above market price.</li>
           <li><strong>Mind the spread.</strong> Shops sell for about 25% more than they buy. Buy-and-resell only pays when two shops' prices drift far apart.</li>
@@ -39,6 +41,7 @@ const CHAPTERS: { title: string; body: React.ReactNode }[] = [
           <li><strong>Tools</strong> double what each swing yields, for 25 swings.</li>
           <li><strong>Your cottage</strong> raises your stamina cap (100 → 200 over four levels). Building it burns tools and bread.</li>
           <li><strong>XP and titles</strong> come from real work: gathering, selling, delivering, building, bidding. Wanderer → Peddler → Hauler → Trader → Merchant → Burgher → Patron of Meridian.</li>
+          <li><strong>Marks of the trade</strong>: twelve to collect, from your first perfect swing to your first Festival share. The full set raises your stamina cap by 25. See them in the Town books.</li>
         </ul>
       </>
     ),
@@ -120,8 +123,10 @@ export function Guide({ onClose }: { onClose: () => void }) {
 
 interface Leader { accountId: string; name: string; title: string; level: number; coins: string; deeds: string[] }
 
-export function Leaders({ account, world, onClose }: { account: string; world: World; onClose: () => void }) {
+export function Leaders({ account, world, onClose, act, busy }: { account: string; world: World; onClose: () => void; act?: Act; busy?: string | null }) {
   const [rows, setRows] = useState<Leader[] | null>(null);
+  const [tipTo, setTipTo] = useState<string | null>(null);
+  const canTip = !!act && hasV4(world);
   useEffect(() => {
     fetch('/api/leaders').then(r => r.json()).then(setRows).catch(() => setRows([]));
   }, []);
@@ -137,16 +142,22 @@ export function Leaders({ account, world, onClose }: { account: string; world: W
         {rows?.length === 0 && <p className="empty-note">No one has made a name yet. Be the first.</p>}
         {rows && rows.length > 0 && (
           <table className="leaders">
-            <thead><tr><th>#</th><th>Player</th><th>Title</th><th>Purse</th><th>Shops</th></tr></thead>
+            <thead><tr><th>#</th><th>Player</th><th>Title</th><th>Purse</th><th>Shops</th>{canTip && <th />}</tr></thead>
             <tbody>
               {rows.map((r, i) => (
-                <tr key={r.accountId} className={r.accountId === account ? 'me' : ''}>
-                  <td>{i + 1}</td>
-                  <td>{short(r.accountId)}</td>
-                  <td>{r.title} <span className="muted">Lv {r.level}</span></td>
-                  <td>{fmt(r.coins)}</td>
-                  <td>{r.deeds.join(', ') || 'None yet'}</td>
-                </tr>
+                <Fragment key={r.accountId}>
+                  <tr className={r.accountId === account ? 'me' : ''}>
+                    <td>{i + 1}</td>
+                    <td>{short(r.accountId)}</td>
+                    <td>{r.title} <span className="muted">Lv {r.level}</span></td>
+                    <td>{fmt(r.coins)}</td>
+                    <td>{r.deeds.join(', ') || 'None yet'}</td>
+                    {canTip && <td>{r.accountId !== account && <button className="small" onClick={() => setTipTo(t => (t === r.accountId ? null : r.accountId))}>Tip</button>}</td>}
+                  </tr>
+                  {canTip && tipTo === r.accountId && (
+                    <tr><td colSpan={6}><TipForm to={r.accountId} act={act!} busy={busy ?? null} onDone={() => setTipTo(null)} /></td></tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>

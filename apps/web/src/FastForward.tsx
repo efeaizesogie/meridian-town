@@ -95,6 +95,46 @@ export function FastForward({ world, onClose }: { world: World; onClose: () => v
     return () => clearInterval(timer);
   }, [running, speed]);
 
+  // Stress tests: push the simulated town somewhere uncomfortable and watch the rules respond.
+  const [pokes, setPokes] = useState<{ tick: number; text: string }[]>([]);
+  const poke = (text: string, run: (t: Town) => void) => {
+    const t = town.current!;
+    run(t);
+    samples.current.push(sample(t));
+    setPokes(p => [...p, { tick: t.tick, text }]);
+    setFrame(f => f + 1);
+  };
+  const flood = () => poke('You dumped 300 wheat on the Granary and the Bakery. Watch what they pay for wheat fall.', t => {
+    for (const id of ['granary', 'baker']) {
+      const shop = t.shops.find(x => x.id === id);
+      if (shop) shop.stock.wheat += 150;
+    }
+  });
+  const bankrupt = () => poke('You emptied the Bakery’s till and shelves after it had already missed one upkeep. It can’t pay tonight, so it closes and its deed goes to auction.', t => {
+    const shop = t.shops.find(x => x.id === 'baker');
+    if (!shop) return;
+    shop.cash = 0;
+    shop.stock.bread = 0;
+    shop.stock.wheat = 0;
+    shop.missedUpkeep = Math.max(shop.missedUpkeep, DEFAULT_PARAMS.missedUpkeepToClose - 1);
+  });
+  const famine = () => poke('You stripped the Fields bare. Wheat gets scarce, prices rise, and shops post contracts to get it.', t => {
+    t.ground.wheat = 0;
+    for (const id of ['granary', 'baker']) {
+      const shop = t.shops.find(x => x.id === id);
+      if (shop) shop.stock.wheat = 0;
+    }
+  });
+  const skip = () => {
+    setRunning(false);
+    const t = town.current!;
+    while (t.tick < TICKS) {
+      t.step();
+      samples.current.push(sample(t));
+    }
+    setFrame(f => f + 1);
+  };
+
   const t = town.current;
   if (!t) return null;
   const s = samples.current;
@@ -103,7 +143,8 @@ export function FastForward({ world, onClose }: { world: World; onClose: () => v
   const day = Math.min(DAYS, Math.floor(t.tick / DEFAULT_PARAMS.ticksPerDay) + 1);
   const target = t.weeks.at(-1)?.target ?? t.weekTarget;
   const festival = t.weeks.at(-1);
-  const events = [...t.events].reverse();
+  const events: { tick: number; kind: TownEvent['kind'] | 'you'; text: string }[] = [...t.events, ...pokes.map(p => ({ ...p, kind: 'you' as const }))]
+    .sort((a, b) => b.tick - a.tick);
 
   return (
     <div className="ff-backdrop" role="dialog" aria-modal="true" aria-labelledby="ff-title" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -134,8 +175,16 @@ export function FastForward({ world, onClose }: { world: World; onClose: () => v
           </div>
           <div className="row">
             {!done && <button className="primary" onClick={() => setRunning(r => !r)}>{running ? 'Pause' : t.tick ? 'Resume' : '▶ Run the week'}</button>}
-            {(t.tick > 0) && <button disabled={running} onClick={() => reset()}>Start over</button>}
+            {(t.tick > 0) && <button disabled={running} onClick={() => { setPokes([]); reset(); }}>Start over</button>}
           </div>
+        </div>
+
+        <div className="ff-stress" role="group" aria-label="Stress tests">
+          <span className="muted">Stress test</span>
+          <button disabled={done} onClick={flood}>Flood the wheat market</button>
+          <button disabled={done} onClick={famine}>Strip the Fields bare</button>
+          <button disabled={done} onClick={bankrupt}>Bankrupt the Bakery</button>
+          <button disabled={done} onClick={skip}>Skip to the Festival</button>
         </div>
 
         <div className="ff-status">
@@ -163,7 +212,7 @@ export function FastForward({ world, onClose }: { world: World; onClose: () => v
             {events.slice(0, 60).map((e, i) => (
               <li key={`${e.tick}-${i}`} className={`ev ${e.kind}`}>
                 <span className="ev-day">Day {Math.floor(e.tick / DEFAULT_PARAMS.ticksPerDay) + 1}</span>
-                <span className={`ev-kind ${e.kind}`}>{KIND_LABEL[e.kind]}</span>
+                <span className={`ev-kind ${e.kind}`}>{e.kind === 'you' ? 'You' : KIND_LABEL[e.kind]}</span>
                 {e.text}
               </li>
             ))}

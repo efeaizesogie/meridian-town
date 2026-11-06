@@ -43,7 +43,8 @@ const mmss = (ms: number) => {
   return h ? `${h}h ${m}m` : `${m}:${String(s % 60).padStart(2, '0')}`;
 };
 
-export function Hud({ world, account, purseRef, onAccount, onEarnings, onGuide, onLeaders, onFestival, gfx, onGfx }: {
+export function Hud({ world, account, purseRef, onAccount, onEarnings, onGuide, onLeaders, onFestival, onBooks, gfx, onGfx }: {
+  onBooks: () => void;
   gfx: '3d' | '2d';
   onGfx: () => void;
   world: World;
@@ -111,6 +112,7 @@ export function Hud({ world, account, purseRef, onAccount, onEarnings, onGuide, 
       <nav className="hud-menu" aria-label="Game menu">
         <button className="icon-btn" onClick={onGuide} title="How to play" aria-label="How to play"><Icon name="book" size={22} /></button>
         <button className="icon-btn" onClick={onLeaders} title="Leaderboard" aria-label="Leaderboard"><Icon name="rosette" size={22} /></button>
+        <button className="icon-btn" onClick={onBooks} title="The town’s books: where every coin is, records, and your marks" aria-label="Town books"><Icon name="scroll" size={22} /></button>
         <button className="icon-btn" onClick={onGfx} title={gfx === '3d' ? 'Switch to the flat map (lighter on old devices)' : 'Switch to the 3D island'} aria-label={gfx === '3d' ? 'Flat map' : '3D island'}><Icon name={gfx === '3d' ? 'map' : 'island'} size={22} /></button>
         <button className={`icon-btn ${musicOn ? '' : 'off'}`} onClick={() => { setMusicOn(!musicOn); setMusic(!musicOn); }} title={musicOn ? 'Music on' : 'Music off'} aria-label="Music" aria-pressed={musicOn}><Icon name="music" size={22} /></button>
         <button className="icon-btn" onClick={() => { setMuted(!muted); setM(!muted); }} title={muted ? 'Sound off' : 'Sound on'} aria-label="Sound" aria-pressed={!muted}><Icon name={muted ? 'mute' : 'sound'} size={22} /></button>

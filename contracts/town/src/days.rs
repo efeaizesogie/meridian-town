@@ -33,6 +33,9 @@ impl Town {
             return U128(0);
         }
         let paid = self.pay_claim(&player, &pw);
+        if paid > 0 {
+            self.mint_festival_badge(&player, pw.week);
+        }
         self.player_weeks.insert(player, PlayerWeek { week, volume: U128(0) });
         U128(paid)
     }
@@ -174,6 +177,9 @@ impl Town {
                 self.move_coin(&acct, &holder, div, "dividend");
                 s.dividends_paid = U128(s.dividends_paid.0 + div);
                 events::town("dividend", json!({ "shop": id, "holder": holder, "amount": U128(div) }));
+                // Shop coin holders share a further slice of the day's profit.
+                let left = self.coin_of(&acct).saturating_sub(self.params.cash_comfort.0);
+                self.pay_coin_dividends(&id, profit, left);
             }
             s.day_start_cash = U128(self.coin_of(&acct));
             self.shops.insert(id, s);
@@ -211,6 +217,7 @@ impl Town {
         let mean = recent.iter().sum::<u128>() / recent.len() as u128;
         self.week_target = (mean * self.params.target_growth_bps as u128 / 10_000).max(self.params.target_floor.0);
         self.week_counted = 0;
+        self.settle_week_extras(week, hit);
         events::town("festival", json!({
             "week": week, "hit": hit, "target": U128(target), "counted": U128(counted),
             "minted": U128(minted), "burned": U128(burned), "streak": self.streak,

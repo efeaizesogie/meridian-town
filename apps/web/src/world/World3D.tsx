@@ -219,7 +219,8 @@ function Scene({ world, onOpen, selected, questPlace, account, working, lowPower
   const { night } = daylight(intoDay);
   const celebrating = useFestivalCelebration(world);
   const spot = (p: Place, node: React.ReactNode, opts: { ring?: number; labelY?: number; scale?: number; sign?: { text: string; hot: boolean } } = {}) => (
-    <Spot key={p} place={p} onOpen={onOpen} selected={selected === p} quest={questPlace === p} ring={opts.ring} labelY={opts.labelY} scale={opts.scale} sign={opts.sign?.text} hot={opts.sign?.hot}>
+    <Spot key={p} place={p} onOpen={onOpen} selected={selected === p} quest={questPlace === p} ring={opts.ring} labelY={opts.labelY} scale={opts.scale} sign={opts.sign?.text} hot={opts.sign?.hot}
+      title={p.startsWith('s:') ? world.styles?.[p.slice(2)]?.title : undefined} deco={p.startsWith('s:') ? world.styles?.[p.slice(2)] : undefined}>
       {node}
     </Spot>
   );

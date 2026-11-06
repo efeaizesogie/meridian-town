@@ -16,6 +16,7 @@ mod caravan;
 mod days;
 mod deeds;
 mod events;
+mod extras;
 mod ft;
 mod jobs;
 mod market;
@@ -47,6 +48,15 @@ pub(crate) enum Key {
     CaravanRounds,
     CaravanCommits,
     Guilds,
+    // Added in V4 (social money, boosts, predictions, shop coins, tournament, tools).
+    Boosts,
+    Bets,
+    Pools,
+    Coins,
+    Holdings,
+    Tourneys,
+    Entries,
+    Tools,
 }
 
 #[near(serializers = [borsh, json])]
@@ -143,6 +153,9 @@ pub struct Town {
     pub(crate) caravan_rounds: LookupMap<u32, Round>,
     pub(crate) caravan_commits: LookupMap<(u32, Item, AccountId), Vec<u8>>,
     pub(crate) guilds: IterableSet<AccountId>,
+
+    // V4: see extras.rs
+    pub(crate) extras: extras::Extras,
 }
 
 pub(crate) fn sub(name: &str) -> AccountId {
@@ -188,6 +201,7 @@ impl Town {
             caravan_rounds: LookupMap::new(Key::CaravanRounds),
             caravan_commits: LookupMap::new(Key::CaravanCommits),
             guilds: IterableSet::new(Key::Guilds),
+            extras: extras::Extras::new(),
             owner,
             minter,
             genesis_ns: now,

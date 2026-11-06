@@ -50,6 +50,9 @@ pub struct GatherOrder {
     pub player: AccountId,
     pub item: Item,
     pub quantity: u32,
+    /// A crafted tool (token id) the player is gathering with, if any.
+    #[serde(default)]
+    pub tool: Option<String>,
 }
 
 #[near]
@@ -68,8 +71,9 @@ impl Town {
 
         self.move_items(&player, &acct, item, quantity as u64, Some("sold to shop"));
         self.move_coin(&acct, &player, total - tax, "shop purchase");
-        self.move_coin(&acct, &env::current_account_id(), tax, "trade tax");
+        self.pay_tax(&acct, &shop_id, tax);
         self.record_volume(&player, total);
+        self.tourney_sale(&player, total);
         events::town("trade", json!({
             "player": player, "shop": shop_id, "side": "sell", "item": item.id(),
             "quantity": quantity, "total": U128(total), "tax": U128(tax),
@@ -89,7 +93,7 @@ impl Town {
         require!(total + tax <= max_total.0, "price moved above max_total");
 
         self.move_coin(&player, &acct, total, "bought from shop");
-        self.move_coin(&player, &env::current_account_id(), tax, "trade tax");
+        self.pay_tax(&player, &shop_id, tax);
         self.move_items(&acct, &player, item, quantity as u64, Some("bought from shop"));
         self.record_volume(&player, total);
         events::town("trade", json!({
@@ -108,7 +112,14 @@ impl Town {
 
     pub fn gather_batch(&mut self, orders: Vec<GatherOrder>) -> Vec<u32> {
         require!(env::predecessor_account_id() == self.minter, "minter only");
-        orders.into_iter().map(|o| self.gather_one(&o.player, o.item, o.quantity)).collect()
+        orders
+            .into_iter()
+            .map(|o| {
+                // A crafted tool the player holds adds one unit per swing at its ground.
+                let bonus = o.tool.as_deref().map(|t| self.tool_bonus(&o.player, t, o.item, o.quantity)).unwrap_or(0);
+                self.gather_one(&o.player, o.item, o.quantity + bonus)
+            })
+            .collect()
     }
 
     /// Use up goods: bread restores stamina, a tool lasts a number of swings. The game
@@ -282,6 +293,16 @@ impl Town {
         } else {
             volume.min(self.params.player_volume_cap.0)
         }
+    }
+
+    /// The 2% trade tax: a quarter to the shop's deed holder when a player (or guild) holds it,
+    /// the rest to the treasury.
+    pub(crate) fn pay_tax(&mut self, from: &AccountId, shop_id: &str, tax: u128) {
+        let treasury = env::current_account_id();
+        let holder = self.deed_owner(shop_id);
+        let cut = if holder == treasury { 0 } else { tax * crate::extras::DEED_TAX_BPS / 10_000 };
+        self.move_coin(from, &holder, cut, "deed holder's share of trade tax");
+        self.move_coin(from, &treasury, tax - cut, "trade tax");
     }
 
     /// Add to a player's counted volume for the current market week (RULES.md §7).

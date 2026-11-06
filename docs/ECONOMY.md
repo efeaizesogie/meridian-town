@@ -78,6 +78,29 @@ New coin appears only at a Festival, and only when the town as a whole traded mo
 target. Supply in the simulator stayed within about ±8% over 60 days, and every run checks that
 all balances add up to the total supply exactly.
 
+### Social money, memecoin sinks and NFT utility (contract V4)
+
+All inside the town contract, so the conservation check (every coin in a known account) still
+holds; escrow sits in `bets.<town>`, `coins.<town>` and `tourney.<town>`.
+
+| | What it does | Coin flow |
+| --- | --- | --- |
+| **Tips** | Send MERI to any player with a note; it shows in the town crier. | player → player |
+| **Shop coins** ($OSWIN, $PETRA…) | Each shop has a coin on a bonding curve (the k-th coin costs 1 + 0.02k MERI). Holders share **20% of the shop's daily profit**. | Buys fill a reserve that backs every coin; **2.5% of every buy and sell burns** |
+| **Festival prediction pool** | Stake on "hit" or "miss"; bets close two days before the week ends; winners split the pot pro rata. | **2% burns**; if nobody picked the winning side, the whole pot burns |
+| **Weekly tournament** | 5 MERI entry; the biggest single sale of the week wins. | Winner takes 95%, **5% burns**; no winner rolls the pot over |
+| **Burn to boost** | Fireworks (5), a market bell that lifts one good's price at every shop for an hour (10), a banner on the Festival stage (20). | **100% burned** |
+| **Deed holders' cut** | A quarter of the 2% trade tax at a shop goes to whoever holds its deed. | treasury → deed holder |
+| **Festival badges** | An NFT for every Festival week you shared in. | — |
+| **Marks of the trade** | The twelve marks, minted as **soulbound** NFTs (they can't be transferred). | — |
+| **Crafted tools** | Silver Axe, Iron Pick, Golden Sickle: NFTs forged from wood, ore and 5 MERI (burned); +1 unit a swing at their ground for 60 swings, durability tracked on chain; tradeable. | 5 MERI burned, goods burned |
+
+Off chain, the server adds a **daily chest** (stamina, XP and a borrowed tool every third day in
+a row), **market shocks** (rain, a flooded shaft, a storm: about half an hour each, they move the
+shopkeepers' targets inside the contract's band), the **town crier** feed, **deed perks** (name and
+colours on the island, and a vote on next week's event) and **guild bounties** (a shared weekly
+goal; when met, members vote a share-out of 30% of the guild treasury by contribution).
+
 ## 4. What stops abuse
 
 - **Bots and sybils:** stamina limits how much one account can gather, each player's Festival

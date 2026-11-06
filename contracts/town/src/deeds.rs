@@ -183,6 +183,10 @@ impl Town {
     }
 
     fn before_deed_transfer(&mut self, shop_id: &str) {
+        require!(!Town::is_soulbound(shop_id), "marks of the trade are soulbound");
+        if self.shops.get(shop_id).is_none() {
+            return; // a badge or a tool: no shop to protect
+        }
         require!(self.shop(shop_id).open, "a closed shop's deed can't be transferred");
         require!(self.auctions.get(shop_id).is_none(), "this deed is at auction");
         // The new holder appoints their own agent.
@@ -261,6 +265,12 @@ impl Town {
 
     /// Live shop data in the token: wallets show the deed's current state, not a snapshot.
     fn decorate(&self, mut t: Token) -> Token {
+        if let Some(info) = self.extras.tools.get(&t.token_id) {
+            if let Some(m) = t.metadata.as_mut() {
+                m.extra = Some(json!({ "kind": info.kind, "item": info.item.id(), "uses_left": info.uses_left }).to_string());
+            }
+            return t;
+        }
         let Some(s) = self.shops.get(&t.token_id) else { return t };
         let acct = sub(&s.id);
         let cash = self.coin_of(&acct);

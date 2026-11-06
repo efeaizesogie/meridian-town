@@ -8,6 +8,7 @@
 import { teraToGas } from 'near-api-js';
 import { TOWN } from './chain.ts';
 import { KeyStore, withRetries } from './accounts.ts';
+import { activeShock, demandShift, eventFor } from './events.ts';
 
 const ITEMS = ['wood', 'ore', 'wheat', 'bread', 'tool'] as const;
 type Item = (typeof ITEMS)[number];
@@ -102,7 +103,7 @@ function limits(s: ShopView, item: Item, params: { job_trigger_bps: number; job_
 }
 
 /** The always-on strategy: chase inputs when short, discount gluts, drift home otherwise. */
-export function decideByRules(s: ShopView, jobs: Job[], params: any): Decision {
+export function decideByRules(s: ShopView, jobs: Job[], params: any, week = -1): Decision {
   const acts: Action[] = [];
   const notes: string[] = [];
   const traded = ITEMS.filter(i => s.shop.genesis_target[ITEMS.indexOf(i)] > 0);
@@ -118,10 +119,16 @@ export function decideByRules(s: ShopView, jobs: Job[], params: any): Decision {
         notes.push(`${item} down to ${L.stock}/${L.target}: posting ${qty} at ${m(price)}`);
       }
     }
+    // This week's event and any market shock pull the usual level up (or down, for a glut).
+    const ev = week >= 0 && s.shop.buys.includes(item) ? demandShift(week, s.shop.id, item) : null;
+    const home = ev ? Math.max(L.minTarget, Math.min(L.maxTarget, Math.round((L.genesis * (10_000 + ev.bps)) / 10_000))) : L.genesis;
     let next = L.target;
     if (L.stock < L.target * 0.5) next = Math.min(L.maxTarget, L.target + step);
-    else if (L.stock > L.target * 2) next = Math.max(L.minTarget, L.target - step);
-    else if (L.target !== L.genesis && L.stock >= L.target * 0.8 && L.stock <= L.target * 1.5) next = L.target + Math.sign(L.genesis - L.target) * Math.min(step, Math.abs(L.genesis - L.target));
+    else if (L.stock > L.target * 2) next = Math.max(ev && ev.bps > 0 ? L.genesis : L.minTarget, L.target - step);
+    else if (ev && L.target < home) next = Math.min(home, L.target + step);
+    else if (ev && L.target > home) next = Math.max(home, L.target - step);
+    else if (L.target !== home && L.stock >= L.target * 0.8 && L.stock <= L.target * 1.5) next = L.target + Math.sign(home - L.target) * Math.min(step, Math.abs(home - L.target));
+    if (ev && next !== L.target) notes.push(`${ev.titles.join(' and ')}: pulling ${item} toward ${home}`);
     if (next !== L.target) {
       acts.push({ type: 'set_target', item, target: next });
       notes.push(`${item} target ${L.target}→${next} (${next > L.target ? 'short, paying more' : next < L.target ? 'glutted, cheaper' : 'settling'})`);
@@ -136,8 +143,15 @@ export function decideByRules(s: ShopView, jobs: Job[], params: any): Decision {
   const job = acts.find(a => a.type === 'post_job') as Extract<Action, { type: 'post_job' }> | undefined;
   const cut = acts.find(a => a.type === 'set_target' && a.target < s.shop.target[ITEMS.indexOf(a.item)]) as Extract<Action, { type: 'set_target' }> | undefined;
   const raise = acts.find(a => a.type === 'set_target' && a.target > s.shop.target[ITEMS.indexOf(a.item)]) as Extract<Action, { type: 'set_target' }> | undefined;
+  const pull = (a?: { item: Item }) => (a && week >= 0 ? demandShift(week, s.shop.id, a.item) : null);
+  const eventRaise = pull(raise);
+  const eventCut = pull(cut);
   const say = job
     ? `${lines.short} ${m(job.unit_price)} a piece for ${job.quantity} ${job.item}, and the money’s already in escrow.`
+    : eventRaise && eventRaise.bps > 0
+      ? `${eventRaise.titles[0]}! I’m paying more for ${raise!.item} for now.`
+    : eventCut && eventCut.bps < 0
+      ? `${eventCut.titles[0]}. ${cut!.item[0].toUpperCase() + cut!.item.slice(1)} is cheap for a while.`
     : raise
       ? `${lines.short} Paying more for ${raise.item} until it comes in.`
       : cut
@@ -170,11 +184,21 @@ async function askLLM(s: ShopView, jobs: Job[], params: any, town: any, suggesti
     }),
     your_open_contracts: jobs.filter(j => j.shop_id === s.shop.id).map(j => ({ id: j.id, item: j.item, remaining: j.remaining, expired: j.deadline_ns < Date.now() * 1e6 })),
     town: { day: town.day, festival_progress: `${m(town.week_counted)}/${m(town.week_target)}` },
+    this_weeks_event: (() => {
+      const e = eventFor(town.week);
+      return { title: e.title, news: e.blurb, good: e.item, affects_you: e.shops.includes(s.shop.id) && s.shop.buys.includes(e.item) };
+    })(),
+    market_shock: (() => {
+      const k = activeShock();
+      return k ? { title: k.title, news: k.blurb, good: k.item, demand: k.boostBps > 0 ? 'up' : 'down', affects_you: k.shops.includes(s.shop.id) && s.shop.buys.includes(k.item), minutes_left: Math.round((k.end - Date.now()) / 60_000) } : null;
+    })(),
   };
   const system = `You are ${PERSONAS[s.shop.id].voice}, running a shop in Meridian Town, a market game on NEAR.
 Prices follow a fixed rule: price = base × (2·target ÷ (stock + target))². Your target moves BOTH of your prices at once: raising it makes you pay more for what you buy AND charge more for what you sell.
 So: when a good is "short" and you need it, raise its target or post a contract. When a good is "glutted", lower its target so it moves and you stop buying more. Never raise the target of a glutted good.
 You may only: set_target (within target_allowed), post_job (a delivery contract for a raw good you buy, only where contract_allowed, quantity ≤ contract_max_quantity, unit_price_micro ≤ contract_max_unit_price_micro, hours 1), expire_job (your expired contracts). You may also do nothing.
+If market_shock affects_you, demand for that good is moving for the next few minutes: lean its target that way (up if demand is up, down if it is down) and mention it.
+If this_weeks_event affects_you, demand for that good is up this week: lean toward a higher target for it (never above target_allowed) and mention the event when you do.
 Keep your shop solvent: upkeep is 25 MERI a day and you close after two missed days.
 Your "say" line must describe only the actions in your actions list; if you do nothing, say that in character. You can't post a second contract for a good that already has one open.
 Reply with JSON only: {"say": "<one line in character, under 140 characters, to show players>", "reasoning": "<one plain sentence>", "actions": [ ... ]}.
@@ -254,7 +278,7 @@ async function tick() {
   await Promise.all(shops.map(async s => {
     const shopId = s.shop.id;
     if (!store.ready(shopId) || s.shop.agent !== agentAccount(shopId) || !s.shop.open) return;
-    const rules = decideByRules(s, jobs, params);
+    const rules = decideByRules(s, jobs, params, town?.week ?? -1);
     const last = reports[shopId];
     const wantsToSpeak = !last || Date.now() - last.at > SPEAK_EVERY_MS;
     if (!rules.actions.length && !wantsToSpeak) return;

@@ -106,6 +106,8 @@ export interface GatherOrder {
   player: string;
   item: 'wood' | 'ore' | 'wheat';
   quantity: number;
+  /** A crafted tool NFT the player gathers with (V4 contract). */
+  tool?: string;
 }
 
 export async function gatherBatch(orders: GatherOrder[]): Promise<number[]> {

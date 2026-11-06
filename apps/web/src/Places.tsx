@@ -1,19 +1,22 @@
 // What you see and do at each place on the map. Shops, the notice board, the auction house,
 // the guild hall and the caravan reuse their panels; the grounds, your cottage and the
 // Festival stage are drawn here.
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Act, World } from './App';
+import { reducedMotion } from './juice';
+import { DeedPerks } from './Crier';
+import { FestivalExtras, Forge, ShopCoinPanel, latestBanner, toolFor } from './Market';
 import type { Config } from './near';
 import { SPOTS, type Place } from './TownMap';
 import { ShopCard } from './ShopCard';
 import { Inventory, NoticeBoard, Deeds } from './Panels';
 import { GuildHall } from './Guilds';
 import { Caravan } from './Caravan';
-import { KEEPERS, fmt, meri, type Item, type Job, type Shop } from './types';
+import { KEEPERS, fmt, meri, type Item, type Job, type Shop, type SwingTiming } from './types';
 import { Icon } from './Icon';
 
 export interface Actions {
-  gather: (ground: string) => void;
+  gather: (ground: string, timing?: SwingTiming) => void;
   sell: (shop: Shop, item: Item, qty: number) => void;
   buy: (shop: Shop, item: Item, qty: number) => void;
   use: (item: 'bread' | 'tool') => void;
@@ -75,12 +78,28 @@ export function PlaceDrawer({ place, world, config, account, busy, act, actions,
       <ShopCard shop={s} agent={world.agents?.[s.shop.id]} explorer={config.network === 'mainnet' ? 'https://nearblocks.io' : 'https://testnet.nearblocks.io'}
         prev={prevShops?.find(p => p.shop.id === s.shop.id)} params={world.params} player={world.player} busy={busy} onSell={actions.sell} onBuy={actions.buy} />
     );
+    if (s) body = <>{body}<ShopCoinPanel shopId={s.shop.id} world={world} act={act} busy={busy} /></>;
   } else if (place === 'board') body = <NoticeBoard world={world} busy={busy} onDeliver={actions.deliver} />;
-  else if (place === 'auction') body = <Deeds world={world} account={account} busy={busy} onBid={actions.bid} onAppoint={actions.appoint} />;
+  else if (place === 'auction') body = (
+    <>
+      <DeedPerks world={world} account={account} act={act} />
+      <Deeds world={world} account={account} busy={busy} onBid={actions.bid} onAppoint={actions.appoint} />
+    </>
+  );
   else if (place === 'guildhall') body = <GuildHall world={world} account={account} busy={busy} act={act} town={config.town} />;
   else if (place === 'caravan') body = <Caravan world={world} />;
-  else if (place === 'cottage') body = <Cottage world={world} busy={busy} actions={actions} />;
-  else if (place === 'festival') body = <Festival world={world} onClaim={actions.claim} onFastForward={onFastForward} />;
+  else if (place === 'cottage') body = (
+    <>
+      <Cottage world={world} busy={busy} actions={actions} />
+      <Forge world={world} act={act} busy={busy} explorer={config.network === 'mainnet' ? 'https://nearblocks.io' : 'https://testnet.nearblocks.io'} town={config.town} />
+    </>
+  );
+  else if (place === 'festival') body = (
+    <>
+      <Festival world={world} onClaim={actions.claim} onFastForward={onFastForward} />
+      <FestivalExtras world={world} act={act} busy={busy} />
+    </>
+  );
 
   return (
     <aside className="drawer" aria-label={SPOTS[place]?.label} ref={sheet}>
@@ -109,15 +128,25 @@ function Ground({ place, world, config, busy, actions, onGo }: { place: Place; w
   return (
     <div className="ground-panel">
       <p className="hint">{g.blurb}</p>
+      {world.event?.item === g.item && <EventCard world={world} compact />}
+      {(() => {
+        const t = toolFor(world, g.item);
+        const name = t ? ({ axe: 'Silver Axe', pick: 'Iron Pick', sickle: 'Golden Sickle' } as Record<string, string>)[t.kind] ?? 'tool' : '';
+        return t ? <p className="tool-note with-icon"><Icon name="tool" /> Your {name} adds one {g.item} a swing ({t.uses_left} swings left).</p> : null;
+      })()}
       <div className="meter big" title={`${left} of ${cap} ${g.item} left`}>
         <div className={`meter-fill ${left / cap < 0.2 ? 'low' : ''}`} style={{ width: `${(left / cap) * 100}%` }} />
         <span>{left} {g.item} left. Regrows through the day, shared by everyone</span>
       </div>
-      <button className={`swing ${busy === 'Gather' ? 'swinging' : ''}`} disabled={!!busy || tired || left < 1} onClick={() => actions.gather(place.slice(2))}>
-        <span className="swing-icon" aria-hidden><Icon name={place === 'g:forest' ? 'axe' : place === 'g:mine' ? 'pick' : 'sickle'} size={36} /></span>
-        {busy === 'Gather' ? 'Swinging…' : tired ? 'Too tired: eat or rest' : left < 1 ? 'Bare: try another ground' : `Swing ×${config.rules.maxSwingsPerRequest}`}
-        <small>{config.rules.swingCost * config.rules.maxSwingsPerRequest} stamina, {(me?.toolUses ?? 0) > 0 ? 'tool doubles your yield' : '1 per swing, 2 with a tool'}</small>
-      </button>
+      <SwingButton
+        icon={place === 'g:forest' ? 'axe' : place === 'g:mine' ? 'pick' : 'sickle'}
+        busy={busy === 'Gather'}
+        disabled={!!busy || tired || left < 1}
+        label={busy === 'Gather' ? 'Swinging…' : tired ? 'Too tired: eat or rest' : left < 1 ? 'Bare: try another ground' : `Swing ×${config.rules.maxSwingsPerRequest}`}
+        sub={`${config.rules.swingCost * config.rules.maxSwingsPerRequest} stamina, ${(me?.toolUses ?? 0) > 0 ? 'tool doubles your yield' : '1 per swing, 2 with a tool'}`}
+        run={me?.perfect ? undefined : 'Tap again when the rings meet for bonus XP'}
+        onSwing={timing => actions.gather(place.slice(2), timing)}
+      />
       <div className="tip-card">
         <strong className="with-icon"><Icon name={g.item as Item} /> In your pack: {have}</strong>
         {best && (
@@ -129,6 +158,79 @@ function Ground({ place, world, config, busy, actions, onGo }: { place: Place; w
         {best && <button className="small" onClick={() => onGo(`s:${best.s.shop.id}`)}>Walk to {best.s.shop.name}</button>}
       </div>
     </div>
+  );
+}
+
+/** This week's town event: what it is, who's paying more, and what they pay now. */
+export function EventCard({ world, compact = false }: { world: World; compact?: boolean }) {
+  const e = world.event;
+  if (!e) return null;
+  const i = ['wood', 'ore', 'wheat'].indexOf(e.item);
+  const buyers = world.shops.filter(s => e.shops.includes(s.shop.id) && s.shop.open);
+  return (
+    <div className={`event-card ${compact ? 'compact' : ''}`}>
+      <span className="event-kicker with-icon"><Icon name={e.item as Item} /> This week’s event</span>
+      <strong>{e.title}</strong>
+      <p>{e.blurb}</p>
+      {!compact && buyers.length > 0 && (
+        <p className="muted">
+          Paying for {e.item} now: {buyers.map(s => `${KEEPERS[s.shop.id]?.keeper} ${meri(s.bid[i]) > 0 ? meri(s.bid[i]).toFixed(2) : '(full right now)'}`).join(', ')}. The shopkeepers raise their targets through the week, so the price climbs while stock stays short.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ---------- the timing ring: tap once to wind up, again as the rings meet ----------
+
+const RING_MS = 1400; // the closing ring's whole run
+const FROM = 2.4, TO = 0.4; // its scale at the start and end; the target ring is at scale 1
+const HIT_MS = ((FROM - 1) / (FROM - TO)) * RING_MS;
+
+function SwingButton({ icon, busy, disabled, label, sub, run, onSwing }: {
+  icon: 'axe' | 'pick' | 'sickle';
+  busy: boolean;
+  disabled: boolean;
+  label: string;
+  sub: string;
+  run?: string;
+  onSwing: (timing: SwingTiming) => void;
+}) {
+  const [aim, setAim] = useState<number | null>(null);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  const strike = (timing: SwingTiming) => {
+    window.clearTimeout(timer.current);
+    setAim(null);
+    onSwing(timing);
+  };
+  const press = () => {
+    if (aim == null) {
+      // With reduced motion there's no ring to watch: swing straight away.
+      if (reducedMotion()) return onSwing('ok');
+      setAim(performance.now());
+      timer.current = window.setTimeout(() => strike('ok'), RING_MS + 60);
+      return;
+    }
+    const off = Math.abs(performance.now() - aim - HIT_MS);
+    strike(off < 110 ? 'perfect' : off < 260 ? 'good' : 'ok');
+  };
+
+  return (
+    <button className={`swing ${busy ? 'swinging' : ''} ${aim != null ? 'aiming' : ''}`} disabled={disabled && aim == null} onClick={press}>
+      {aim != null ? (
+        <span className="ring-stage" aria-hidden>
+          <i className="ring-target" />
+          <i className="ring-close" style={{ animationDuration: `${RING_MS}ms` }} />
+          <Icon name={icon} size={30} />
+        </span>
+      ) : (
+        <span className="swing-icon" aria-hidden><Icon name={icon} size={36} /></span>
+      )}
+      {aim != null ? 'Now!' : label}
+      <small>{aim != null ? 'Tap as the rings meet' : run ?? sub}</small>
+    </button>
   );
 }
 
@@ -178,6 +280,8 @@ function Festival({ world, onClaim, onFastForward }: { world: World; onClaim: ()
   const claimable = BigInt(world.player?.claimable ?? '0');
   return (
     <div className="festival-panel">
+      {latestBanner(world) && <div className="fest-banner" title={`Hung by ${latestBanner(world)!.who}`}>“{latestBanner(world)!.text}”</div>}
+      {world.event && <EventCard world={world} />}
       <p className="hint">
         Every market week the town has a trading target. Hit it and the Festival <strong>mints new MERI</strong> to everyone who traded,
         in proportion to how much they traded (up to 500 each). Miss it and <strong>5% of the treasury burns</strong>, and the town gets poorer.

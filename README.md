@@ -11,6 +11,30 @@ recovery words that make the account yours). Built with NEAR AI, SputnikDAO and 
 [docs/PARTNERS.md](docs/PARTNERS.md). How players earn, and where that money comes from:
 [docs/ECONOMY.md](docs/ECONOMY.md).
 
+### For judges: five minutes
+
+Open **[/judge](https://meridian-town-production.up.railway.app/judge)**. One click makes you a
+real NEAR account, then every game action (gather, sell, buy and eat, fill a contract, bid for a
+deed, claim a Festival share) is a button that sends a real testnet transaction and links to it.
+The same page lets you stress the economy in fast-forward (flood the wheat market, strip the
+Fields, bankrupt the Bakery, skip to the Festival), shows the AI shopkeepers' accounts and their
+latest transactions, and opens the town's books: where every MERI sits and what each week minted
+or burned. Prefer to look before signing up? *Look around the town first* on the sign-in screen
+opens the live 3D town read-only.
+
+What's new for players: a **timing ring** on every swing (tap as the rings meet for bonus XP),
+a **weekly town event** that moves real demand (the shopkeepers raise their targets for one good,
+so it pays more and the townsfolk go after it), **twelve marks of the trade** to collect (the
+full set raises your stamina cap), and **town records** checked against on-chain transactions.
+Also: a **daily chest** with a streak, **market shocks** with a live **town crier**, **guild bounties**
+shared out by DAO vote, and **deed perks** (rename and decorate your shop, vote on next week's event).
+
+Contract V4 adds **social money and NFT utility**: tips, **shop coins** on a bonding curve whose
+holders share each shop's profit, a **Festival prediction pool**, a **weekly tournament**,
+**burn-to-boost** (fireworks, a market bell, a banner), a deed holder's cut of trade tax, and NFTs
+that do something: Festival badges, **soulbound marks**, and **crafted tools** with on-chain
+durability. Every sink burns MERI. See [docs/ECONOMY.md](docs/ECONOMY.md).
+
 > Status: the game design, economy rules, simulator and core contract are done and
 > deployed to testnet (coin, goods, shops, trading, gathering, delivery contracts,
 > Festival, deeds), the game is playable in the browser, and six merchant agents run the

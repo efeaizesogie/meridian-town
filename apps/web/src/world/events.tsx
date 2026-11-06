@@ -237,6 +237,15 @@ export function useFestivalCelebration(world: World) {
     if (seen.current !== null && n > seen.current && last?.hit) setUntil(Date.now() + 30_000);
     seen.current = n;
   }, [world.weeks]);
+  // A player burned MERI for fireworks: light them for everyone, once per boost.
+  const lastBoost = useRef<number | null>(null);
+  const fw = (world as World & { boosts?: { kind: string; at_ns: number }[] | null }).boosts?.find(b => b.kind === 'fireworks');
+  useEffect(() => {
+    if (!fw) return;
+    const fresh = Date.now() - fw.at_ns / 1e6 < 60_000;
+    if (lastBoost.current !== fw.at_ns && fresh) setUntil(Date.now() + 30_000);
+    lastBoost.current = fw.at_ns;
+  }, [fw?.at_ns]); // eslint-disable-line react-hooks/exhaustive-deps
   const [, tick] = useState(0);
   useEffect(() => {
     if (!until) return;
