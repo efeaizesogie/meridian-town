@@ -238,7 +238,9 @@ input.small { padding: 4px 8px; width: 90px; border-radius: 10px; }
 .festival-panel h3 { margin: 12px 0 4px; }
 .festival-panel button { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; }
 
-.toasts { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 30; pointer-events: none; }
+.toasts { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); width: min(460px, calc(100vw - 32px)); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 30; pointer-events: none; }
+.toast { max-width: 100%; text-align: center; overflow-wrap: anywhere; text-wrap: balance; }
+@media (max-width: 720px) { .toasts { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); } .toast, .toast.level { font-size: 14px; padding: 10px 14px; } }
 .toast { background: var(--grain), var(--color-card); color: var(--ink); border-radius: 16px; padding: 12px 16px; font-weight: 600; font-size: 15px; box-shadow: inset 0 0 0 1.5px var(--ink), 0 4px 0 0 var(--color-sand), var(--shadow-card); animation: toastin 0.3s var(--ease-snap); }
 .toast.level { background: var(--grain), var(--color-accent); font-size: 18px; box-shadow: inset 0 0 0 1.5px var(--ink), 0 4px 0 0 var(--color-accent-deep), var(--shadow-card); }
 @keyframes toastin { from { transform: translateY(-12px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -487,3 +489,5 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
 .label3d span:hover { background: var(--color-accent); }
 
 .toast.good { background: var(--grain), var(--color-card); box-shadow: inset 0 0 0 1.5px var(--color-mint-deep), 0 4px 0 0 var(--color-mint), var(--shadow-card); max-width: min(460px, 90vw); font-size: 14px; }
+
+.stack-form .name-link { justify-self: start; padding: 0; }

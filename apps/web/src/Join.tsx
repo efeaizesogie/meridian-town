@@ -7,6 +7,7 @@ export function Join({ onJoined }: { onJoined: (accountId: string, isNew: boolea
   const [mode, setMode] = useState<'new' | 'back'>('new');
   const [name, setName] = useState('');
   const [secret, setSecret] = useState('');
+  const [needName, setNeedName] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [made, setMade] = useState<{ accountId: string; phrase: string } | null>(null);
@@ -30,8 +31,14 @@ export function Join({ onJoined }: { onJoined: (accountId: string, isNew: boolea
   });
   const restore = run(async () => {
     const words = secret.trim();
-    const id = words.startsWith('ed25519:') ? await restoreWithKey(name, words) : await restoreWithPhrase(name, words);
-    onJoined(id, false);
+    try {
+      const id = words.startsWith('ed25519:') ? await restoreWithKey(name, words) : await restoreWithPhrase(name, words);
+      onJoined(id, false);
+    } catch (e) {
+      // If the words didn't lead to an account, offer the name field as a fallback.
+      if (e instanceof Error && /couldn’t find/.test(e.message)) setNeedName(true);
+      throw e;
+    }
   });
 
   if (made) return <SavePhrase accountId={made.accountId} phrase={made.phrase} onDone={() => onJoined(made.accountId, true)} />;
@@ -62,13 +69,19 @@ export function Join({ onJoined }: { onJoined: (accountId: string, isNew: boolea
         ) : (
           <>
             <h1>Back to your stall</h1>
-            <p className="lede">Your coins, goods and shops are waiting on chain.</p>
+            <p className="lede">Enter your 12 recovery words. We’ll find your account from them.</p>
             <form onSubmit={restore} className="stack-form">
-              <label htmlFor="back-name">Your name</label>
-              <input id="back-name" value={name} onChange={e => setName(e.target.value)} placeholder="ada" autoComplete="username" spellCheck={false} />
               <label htmlFor="back-secret">Your 12 recovery words, or a saved key</label>
               <textarea id="back-secret" value={secret} onChange={e => setSecret(e.target.value)} rows={3} placeholder="apple river …" autoComplete="off" spellCheck={false} />
-              <button className="primary" disabled={busy || name.trim().length < 2 || secret.trim().length < 20}>{busy ? 'Finding your account…' : 'Log in'}</button>
+              {needName ? (
+                <>
+                  <label htmlFor="back-name">Your name</label>
+                  <input id="back-name" value={name} onChange={e => setName(e.target.value)} placeholder="ada" autoComplete="username" spellCheck={false} />
+                </>
+              ) : (
+                <button type="button" className="link name-link" onClick={() => setNeedName(true)}>Log in with your name too</button>
+              )}
+              <button className="primary" disabled={busy || secret.trim().length < 20}>{busy ? 'Finding your account…' : 'Log in'}</button>
               {error && <p className="error">{error}</p>}
               <p className="fine">Your words never leave this browser. They sign one transaction that gives this browser a key to play with.</p>
             </form>

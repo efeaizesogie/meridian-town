@@ -67,6 +67,29 @@ export const accountFor = (name: string) => {
   return n.includes('.') ? n : `${n}.${config.game}`;
 };
 
+/**
+ * Which Meridian account a key belongs to, so players log back in with their words alone.
+ * FastNEAR indexes every key on chain; `all` includes limited play keys, not just full access.
+ */
+async function accountsForKey(publicKey: string, all = false): Promise<string[]> {
+  const base = config.network === 'mainnet' ? 'https://api.fastnear.com' : 'https://test.api.fastnear.com';
+  try {
+    const res = await fetch(`${base}/v0/public_key/${publicKey}${all ? '/all' : ''}`);
+    const out = await res.json();
+    return (out.account_ids ?? []).filter((id: string) => id.endsWith(`.${config.game}`));
+  } catch {
+    return [];
+  }
+}
+
+/** The account to log into: the one named, or the one the key belongs to. */
+async function findAccount(name: string, publicKey: string, all: boolean): Promise<string> {
+  if (name.trim()) return accountFor(name);
+  const ids = await accountsForKey(publicKey, all);
+  if (ids.length === 0) throw new Error('We couldn’t find a Meridian account for those words. Check them, or add your name below.');
+  return ids[0];
+}
+
 async function accessKey(accountId: string, publicKey: string): Promise<any | null> {
   for (let attempt = 0; attempt < config.rpcs.length * 2; attempt++) {
     const url = config.rpcs[rpcIndex % config.rpcs.length];
@@ -88,11 +111,11 @@ async function accessKey(accountId: string, publicKey: string): Promise<any | nu
  * play key (and guild keys) for this browser. Coins, goods and deeds were on chain all along.
  */
 export async function restoreWithPhrase(name: string, phrase: string): Promise<string> {
-  if (!isPhrase(phrase)) throw new Error('those aren’t 12 valid recovery words; check the spelling');
-  const accountId = accountFor(name);
+  if (!isPhrase(phrase)) throw new Error('Those aren’t 12 valid recovery words. Check the spelling and the order.');
   const owner = keyFromPhrase(phrase);
+  const accountId = await findAccount(name, owner.publicKey, false);
   const found = await accessKey(accountId, owner.publicKey);
-  if (!found || found.permission !== 'FullAccess') throw new Error(`that phrase doesn’t own ${accountId}`);
+  if (!found || found.permission !== 'FullAccess') throw new Error(`Those words don’t own ${accountId}.`);
   const play = KeyPair.fromRandom('ed25519');
   const guildKeys = Object.fromEntries(config.guilds.map(g => [g, KeyPair.fromRandom('ed25519')]));
   const ownerAccount = new Account(accountId, provider, owner.secretKey as any);
@@ -113,14 +136,14 @@ export async function restoreWithPhrase(name: string, phrase: string): Promise<s
 
 /** Log back in with a saved play key (characters made before recovery phrases). */
 export async function restoreWithKey(name: string, secretKey: string): Promise<string> {
-  const accountId = accountFor(name);
   let key: KeyPair;
   try {
     key = KeyPair.fromString(secretKey.trim() as any);
   } catch {
-    throw new Error('that doesn’t look like a saved key; it starts with ed25519:');
+    throw new Error('That doesn’t look like a saved key. It starts with ed25519:');
   }
-  if (!(await accessKey(accountId, key.getPublicKey().toString()))) throw new Error(`that key isn’t on ${accountId}`);
+  const accountId = await findAccount(name, key.getPublicKey().toString(), true);
+  if (!(await accessKey(accountId, key.getPublicKey().toString()))) throw new Error(`That key isn’t on ${accountId}.`);
   save({ accountId, secretKey: key.toString() });
   return accountId;
 }
