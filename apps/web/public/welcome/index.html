@@ -126,6 +126,8 @@ mark { background: var(--mark); color: inherit; box-decoration-break: clone; -we
 .wordmark { font-weight: 600; font-size: var(--text-lg); letter-spacing: var(--tracking-display); text-decoration: none; margin-right: auto; }
 .nav-links { display: flex; gap: var(--space-lg); font-size: var(--text-sm); }
 .nav-links a { text-decoration: none; color: var(--color-ink-2); }
+.x-link { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--color-ink); box-shadow: inset 0 0 0 1px var(--color-rule); }
+.x-link:hover { background: var(--color-rule); }
 .nav-links a:hover { color: var(--color-ink); text-decoration: underline; }
 @media (max-width: 52rem) { .nav-links { display: none; } }
 
@@ -250,6 +252,7 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
         <a href="#play">How to play</a>
         <a href="#earn">Earn</a>
       </nav>
+      <a class="x-link" href="https://x.com/meridiantown" target="_blank" rel="noopener" aria-label="Meridian on X" title="@meridiantown on X"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M17.75 3h3.07l-6.7 7.66L22 21h-6.17l-4.83-6.32L5.46 21H2.39l7.17-8.2L2 3h6.33l4.37 5.77L17.75 3Zm-1.08 16.2h1.7L7.4 4.73H5.58l11.09 14.47Z"/></svg></a>
       <a class="btn btn--primary btn--small" href="/play">Play free</a>
     </div>
   </div>
@@ -424,6 +427,7 @@ footer { padding-block: var(--space-2xl) var(--space-xl); }
     <p class="mast">Meridian</p>
     <div class="foot-links">
       <a href="/play">Play</a>
+      <a href="https://x.com/meridiantown" target="_blank" rel="noopener">Follow @meridiantown on X</a>
       <a href="https://github.com/efeaizesogie/meridian-town">Source code</a>
       <span>3D models by Kenney, CC0</span>
       <span>Built on NEAR, coming to mainnet soon</span>
