@@ -491,3 +491,11 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
 .toast.good { background: var(--grain), var(--color-card); box-shadow: inset 0 0 0 1.5px var(--color-mint-deep), 0 4px 0 0 var(--color-mint), var(--shadow-card); max-width: min(460px, 90vw); font-size: 14px; }
 
 .stack-form .name-link { justify-self: start; padding: 0; }
+
+.around { margin: 8px 4px 0; font-size: 13px; color: var(--ink-2); }
+.around strong { color: var(--ink); }
+
+.cashout { padding: 16px; border-radius: 18px; background: var(--grain), var(--color-card); box-shadow: inset 0 0 0 1px var(--color-rule); display: grid; gap: 8px; }
+.cashout .hint { margin: 0; }
+.cashout-row { flex-wrap: wrap; }
+.cashout-row input { width: 120px; }

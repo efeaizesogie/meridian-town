@@ -12,10 +12,12 @@ const read = (f: string) => (existsSync(f) ? readFileSync(f, 'utf8') : null);
 const gameKey = JSON.parse(readFileSync(join(homedir(), '.near-credentials', 'testnet', `${GAME}.json`), 'utf8')).private_key;
 const agents = read(data('agents.json'));
 const suppliers = read(data('suppliers.json'));
+const townsfolk = read(data('townsfolk.json'));
 const lines = [
   `GAME_PRIVATE_KEY=${gameKey}`,
   agents && `MERIDIAN_KEYS_AGENTS=${JSON.stringify(JSON.parse(agents))}`,
   suppliers && `MERIDIAN_KEYS_SUPPLIERS=${JSON.stringify(JSON.parse(suppliers))}`,
+  townsfolk && `MERIDIAN_KEYS_TOWNSFOLK=${JSON.stringify(JSON.parse(townsfolk))}`,
   process.env.NEARAI_API_KEY && `NEARAI_API_KEY=${process.env.NEARAI_API_KEY}`,
   process.env.NEAR_RPCS && `NEAR_RPCS=${process.env.NEAR_RPCS}`,
 ].filter(Boolean);

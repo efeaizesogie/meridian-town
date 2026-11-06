@@ -1,9 +1,9 @@
 // Your account: the recovery phrase that owns it, logging out safely, and the ledger of what
 // you have earned and what you own. Everything of value is on chain under your own account.
 import { useEffect, useState } from 'react';
-import type { World } from './App';
+import type { Act, World } from './App';
 import { Icon } from './Icon';
-import { backup } from './near';
+import { backup, canCashOut, cashOut, nearBalance, quoteCashOut } from './near';
 import { ITEMS, fmt, meri } from './types';
 
 const EXPLORER = { mainnet: 'https://nearblocks.io', testnet: 'https://testnet.nearblocks.io' };
@@ -103,7 +103,49 @@ export function AccountPanel({ network, onClose, onSignOut }: { network: string;
 }
 
 /** What you have earned, by source, and what you own right now: the game's income, in one place. */
-export function Earnings({ world, account, network, onClose }: { world: World; account: string; network: string; onClose: () => void }) {
+/** Swap MERI for NEAR through the Rhea pool, right from the ledger. */
+function CashOut({ world, account, act, busy }: { world: World; account: string; act: Act; busy: string | null }) {
+  const m = world.market;
+  const coins = meri(world.player?.coins ?? 0);
+  const [amount, setAmount] = useState('');
+  const [quote, setQuote] = useState<number | null>(null);
+  const [near, setNear] = useState<number | null>(null);
+  const micro = BigInt(Math.max(0, Math.floor(Number(amount || 0) * 1e6)));
+  useEffect(() => {
+    nearBalance(account).then(b => setNear(Number(b / 10n ** 18n) / 1e6));
+  }, [account, busy]);
+  useEffect(() => {
+    if (!m || micro <= 0n) return setQuote(null);
+    const t = setTimeout(() => quoteCashOut(m, micro).then(q => setQuote(Number(q / 10n ** 18n) / 1e6)).catch(() => setQuote(null)), 300);
+    return () => clearTimeout(t);
+  }, [amount, m?.poolId]);
+  if (!m) return null;
+  const tooMuch = Number(amount) > coins;
+  return (
+    <section className="cashout">
+      <h3 className="section-title">Cash out to NEAR</h3>
+      <p className="hint">Sell MERI into the MERI/wNEAR pool on Rhea and get NEAR in your own account{near !== null ? ` (you hold ${near.toFixed(4)} NEAR now)` : ''}. On testnet the NEAR has no cash value; on mainnet it’s yours to keep or move.</p>
+      {canCashOut() ? (
+        <div className="row cashout-row">
+          <input id="cashout-amount" className="small" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} placeholder={coins.toFixed(2)} aria-label="MERI to swap" />
+          <button type="button" className="link" onClick={() => setAmount(String(Math.floor(coins * 100) / 100))}>All</button>
+          <span className="muted">{quote !== null ? `≈ ${quote.toFixed(4)} NEAR` : ''}</span>
+          <button className="primary small" disabled={!!busy || micro <= 0n || tooMuch}
+            onClick={() => act('Cash out', async () => {
+              const got = await cashOut(m, micro);
+              setAmount('');
+              return `You swapped ${Number(amount).toFixed(2)} MERI for ${(Number(got / 10n ** 18n) / 1e6).toFixed(4)} NEAR, now in your account.`;
+            })}>Swap to NEAR</button>
+        </div>
+      ) : (
+        <p className="muted">This character was made before recovery words, so it can’t move coins out. New characters can.</p>
+      )}
+      {tooMuch && <p className="error">You have {coins.toFixed(2)} MERI.</p>}
+    </section>
+  );
+}
+
+export function Earnings({ world, account, network, onClose, act, busy }: { world: World; account: string; network: string; onClose: () => void; act: Act; busy: string | null }) {
   useEscape(onClose);
   const stats = world.me?.stats;
   const coins = meri(world.player?.coins ?? 0);
@@ -150,6 +192,7 @@ export function Earnings({ world, account, network, onClose }: { world: World; a
             {owned.map(s => <tr key={s.shop.id}><td className="with-icon"><Icon name="house" /> Deed to {s.shop.name}</td><td className="num">1</td><td className="num">its till: {fmt(s.cash, 0)}</td></tr>)}
           </tbody>
         </table>
+        <CashOut world={world} account={account} act={act} busy={busy} />
         {m && (
           <p className="market-line">
             <strong>1 MERI ≈ {m.nearPerMeri.toFixed(4)} NEAR</strong> in the MERI/wNEAR pool on Rhea (pool {m.poolId}, holding {m.meriInPool.toFixed(0)} MERI and {m.nearInPool.toFixed(2)} wNEAR).{' '}

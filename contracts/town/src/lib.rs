@@ -245,6 +245,21 @@ impl Town {
         self.minter = minter;
     }
 
+    /// The one rule the operator may tune: the Festival's weekly target floor, so a small town
+    /// can reach it. Bounded to 100–1,000 MERI and logged, so players can see every change.
+    pub fn set_target_floor(&mut self, floor: U128) {
+        self.assert_owner();
+        let m = params::MICRO;
+        require!(floor.0 >= 100 * m && floor.0 <= 1_000 * m, "the floor must be 100 to 1,000 MERI");
+        let old = self.params.target_floor.0;
+        self.params.target_floor = floor;
+        // A week whose target was only the old floor now aims at the new one.
+        if self.week_target == old {
+            self.week_target = floor.0;
+        }
+        events::town("target_floor_set", near_sdk::serde_json::json!({ "from": U128(old), "to": floor, "week_target": U128(self.week_target) }));
+    }
+
     pub fn get_params(&self) -> Params {
         self.params.clone()
     }

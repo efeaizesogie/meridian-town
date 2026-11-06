@@ -11,6 +11,7 @@ import * as players from './players.ts';
 import * as prog from './progression.ts';
 import { PERSONAS, agentAccount, getReports, startAgents } from './agents.ts';
 import { getSupplierBids, startSuppliers } from './suppliers.ts';
+import { getTownsfolk, startTownsfolk } from './townsfolk.ts';
 import { readGuilds, runRegistrar, type GuildView } from './guilds.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -53,7 +54,7 @@ const RHEA: { exchange: string; poolId: number; meri: string; wnear: string } | 
     return null;
   }
 })();
-let market: { exchange: string; poolId: number; nearPerMeri: number; meriInPool: number; nearInPool: number; readAt: number } | null = null;
+let market: { exchange: string; poolId: number; meri: string; wnear: string; nearPerMeri: number; meriInPool: number; nearInPool: number; readAt: number } | null = null;
 async function readMarket() {
   if (!RHEA) return;
   const pool = await viewOn<{ token_account_ids: string[]; amounts: string[] }>(RHEA.exchange, 'get_pool', { pool_id: RHEA.poolId });
@@ -61,7 +62,7 @@ async function readMarket() {
   const nearAt = pool.token_account_ids.indexOf(RHEA.wnear);
   const meriInPool = Number(pool.amounts[meriAt]) / 1e6;
   const nearInPool = Number(BigInt(pool.amounts[nearAt]) / 10n ** 18n) / 1e6;
-  market = { exchange: RHEA.exchange, poolId: RHEA.poolId, nearPerMeri: meriInPool ? nearInPool / meriInPool : 0, meriInPool, nearInPool, readAt: Date.now() };
+  market = { exchange: RHEA.exchange, poolId: RHEA.poolId, meri: RHEA.meri, wnear: RHEA.wnear, nearPerMeri: meriInPool ? nearInPool / meriInPool : 0, meriInPool, nearInPool, readAt: Date.now() };
 }
 setInterval(() => readMarket().catch(e => console.error('market', e instanceof Error ? e.message : e)), 60_000).unref();
 setTimeout(() => readMarket().catch(() => {}), 3_000).unref();
@@ -201,7 +202,7 @@ async function route(req: IncomingMessage, url: URL, body: string): Promise<unkn
 
   if (req.method === 'GET' && url.pathname === '/api/world') {
     if (!world) throw new HttpError(503, 'reading the town, try again in a moment');
-    return { ...world, agents: getReports(), suppliers: getSupplierBids(), guildViews, market };
+    return { ...world, agents: getReports(), suppliers: getSupplierBids(), guildViews, market, townsfolk: getTownsfolk() };
   }
 
   if (req.method === 'GET' && url.pathname === '/api/player') {
@@ -392,5 +393,6 @@ createServer(async (req, res) => {
 }).listen(PORT, () => {
   startAgents(() => world);
   startSuppliers(() => world?.caravan ?? null);
+  startTownsfolk(() => world, enqueue);
   console.log(`Meridian game server on http://localhost:${PORT} — town ${TOWN}, game account ${GAME}`);
 });

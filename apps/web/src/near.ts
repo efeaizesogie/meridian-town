@@ -195,6 +195,11 @@ export async function api<T>(path: string, body: object = {}): Promise<T> {
 
 /** A view call on the town, moving to the next RPC when one is rate-limited. */
 export async function view<T>(method: string, args: object = {}): Promise<T> {
+  return viewOn<T>(config.town, method, args);
+}
+
+/** A view call on any contract (Rhea's exchange, wrapped NEAR…). */
+export async function viewOn<T>(contract: string, method: string, args: object = {}): Promise<T> {
   let last: unknown;
   for (let attempt = 0; attempt < config.rpcs.length * 2; attempt++) {
     const url = config.rpcs[rpcIndex % config.rpcs.length];
@@ -204,7 +209,7 @@ export async function view<T>(method: string, args: object = {}): Promise<T> {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           jsonrpc: '2.0', id: 'm', method: 'query',
-          params: { request_type: 'call_function', finality: 'optimistic', account_id: config.town, method_name: method, args_base64: b64(new TextEncoder().encode(JSON.stringify(args))) },
+          params: { request_type: 'call_function', finality: 'optimistic', account_id: contract, method_name: method, args_base64: b64(new TextEncoder().encode(JSON.stringify(args))) },
         }),
       });
       const body = await res.json();
@@ -278,3 +283,60 @@ async function reach(path: string, init?: RequestInit): Promise<Response> {
     throw new Error('Can’t reach the town right now. Check your connection and try again.');
   }
 }
+
+// ---------- cashing out: MERI → wNEAR on Rhea → NEAR, signed with the recovery words ----------
+
+export interface Pool { exchange: string; poolId: number; meri: string; wnear: string }
+
+/** What `meriMicro` would fetch in NEAR (yocto) from the pool right now. */
+export async function quoteCashOut(pool: Pool, meriMicro: bigint): Promise<bigint> {
+  if (meriMicro <= 0n) return 0n;
+  const out = await viewOn<string>(pool.exchange, 'get_return', { pool_id: pool.poolId, token_in: pool.meri, amount_in: String(meriMicro), token_out: pool.wnear });
+  return BigInt(out);
+}
+
+/** The NEAR this account holds (yocto), for the ledger. */
+export async function nearBalance(accountId: string): Promise<bigint> {
+  for (let attempt = 0; attempt < config.rpcs.length; attempt++) {
+    try {
+      const res = await fetch(config.rpcs[rpcIndex % config.rpcs.length], { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 'm', method: 'query', params: { request_type: 'view_account', finality: 'optimistic', account_id: accountId } }) });
+      const body = await res.json();
+      if (body.result) return BigInt(body.result.amount);
+    } catch {}
+    rpcIndex++;
+  }
+  return 0n;
+}
+
+/**
+ * Swap MERI for NEAR: sell it into the MERI/wNEAR pool on Rhea, then unwrap. Token transfers
+ * need a 1-yoctoNEAR deposit, which the play key can't attach, so this signs with the key from
+ * the player's recovery words. Returns the NEAR received, in yocto.
+ */
+export async function cashOut(pool: Pool, meriMicro: bigint): Promise<bigint> {
+  if (!session?.phrase) throw new Error('Cashing out needs your 12 recovery words, and this character was made before them.');
+  const owner = new Account(session.accountId, provider, keyFromPhrase(session.phrase).secretKey as any);
+  const quote = await quoteCashOut(pool, meriMicro);
+  if (quote <= 0n) throw new Error('The pool can’t take that much MERI right now. Try a smaller amount.');
+  const minOut = (quote * 97n) / 100n;
+  const before = BigInt(await viewOn<string>(pool.wnear, 'ft_balance_of', { account_id: session.accountId }));
+  const call = (contractId: string, methodName: string, args: object, deposit: bigint, tgas: number) =>
+    owner.callFunction({ contractId, methodName, args, deposit, gas: teraToGas(tgas) });
+  try {
+    if (!(await viewOn<unknown>(pool.wnear, 'storage_balance_of', { account_id: session.accountId }))) {
+      await call(pool.wnear, 'storage_deposit', { account_id: session.accountId }, nearToYocto('0.00125'), 30);
+    }
+    const msg = JSON.stringify({ force: 0, actions: [{ pool_id: pool.poolId, token_in: pool.meri, token_out: pool.wnear, amount_in: String(meriMicro), min_amount_out: String(minOut) }] });
+    // 75 Tgas covers a one-pool swap; a transaction must be able to afford its gas at a pessimistic
+    // price (about 0.001 NEAR per Tgas), and players start with 0.1 NEAR.
+    await call(pool.meri, 'ft_transfer_call', { receiver_id: pool.exchange, amount: String(meriMicro), msg }, 1n, 75);
+    const got = BigInt(await viewOn<string>(pool.wnear, 'ft_balance_of', { account_id: session.accountId })) - before;
+    if (got <= 0n) throw new Error('The swap didn’t go through, so nothing was spent. Try again in a moment.');
+    await call(pool.wnear, 'near_withdraw', { amount: String(got) }, 1n, 30);
+    return got;
+  } catch (e) {
+    throw new Error(e instanceof Error && !/Smart contract panicked|Exceeded|NotEnough/.test(e.message) ? e.message : readablePanic(e));
+  }
+}
+
+export const canCashOut = () => !!session?.phrase;

@@ -38,7 +38,9 @@ export interface World {
   player?: Player;
   me?: Me;
   /** MERI's price in the MERI/wNEAR pool on Rhea, read by the server. */
-  market?: { exchange: string; poolId: number; nearPerMeri: number; meriInPool: number; nearInPool: number } | null;
+  market?: { exchange: string; poolId: number; meri: string; wnear: string; nearPerMeri: number; meriInPool: number; nearInPool: number } | null;
+  /** What the game-run residents did last; shown so players can see the town is busy. */
+  townsfolk?: { id: string; name: string; did: string; at: number }[];
 }
 
 export interface LogLine {
@@ -331,7 +333,15 @@ export default function App() {
             <button onClick={() => setModal('ff')} title="Replay the next market week in a minute"><Icon name="forward" /> Fast-forward</button>
           </div>
         </div>
-        <div className="ticker"><TownLog log={log} busy={busy} /></div>
+        <div className="ticker">
+          <TownLog log={log} busy={busy} />
+          {(world.townsfolk?.length ?? 0) > 0 && (
+            <p className="around" title="Townsfolk are residents the game runs. They trade by the same rules as you.">
+              <strong>Around town:</strong>{' '}
+              {[...world.townsfolk!].sort((a, b) => b.at - a.at).slice(0, 3).map(t => `${t.name} ${t.did}`).join('. ')}.
+            </p>
+          )}
+        </div>
         {place && (
           <PlaceDrawer place={place} world={world} config={config} account={account} busy={busy} act={act} actions={actions}
             prevShops={prev?.shops} onClose={() => setPlace(null)} onFastForward={() => setModal('ff')} onGo={open} />
@@ -344,7 +354,7 @@ export default function App() {
       {modal === 'guide' && <Guide onClose={() => setModal(null)} />}
       {modal === 'leaders' && <Leaders account={account} onClose={() => setModal(null)} />}
       {modal === 'account' && <AccountPanel network={config.network} onClose={() => setModal(null)} onSignOut={() => { signOut(); setModal(null); setAccount(null); }} />}
-      {modal === 'earnings' && <Earnings world={world} account={account} network={config.network} onClose={() => setModal(null)} />}
+      {modal === 'earnings' && <Earnings world={world} account={account} network={config.network} onClose={() => setModal(null)} act={act} busy={busy} />}
     </div>
   );
 }

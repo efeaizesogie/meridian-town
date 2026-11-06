@@ -628,3 +628,30 @@ fn strangers_cant_retire_a_guild() {
     as_("mallory.testnet", T0);
     t.unregister_guild(acc("old.sputnik.testnet"));
 }
+
+#[test]
+fn the_owner_can_lower_the_festival_floor_within_bounds() {
+    let mut t = genesis();
+    as_("owner.testnet", T0);
+    let old = t.params.target_floor.0;
+    assert_eq!(t.week_target, old);
+    t.set_target_floor(U128(300 * MICRO));
+    assert_eq!(t.params.target_floor.0, 300 * MICRO);
+    assert_eq!(t.week_target, 300 * MICRO);
+}
+
+#[test]
+#[should_panic(expected = "100 to 1,000")]
+fn the_festival_floor_cant_be_set_out_of_bounds() {
+    let mut t = genesis();
+    as_("owner.testnet", T0);
+    t.set_target_floor(U128(5 * MICRO));
+}
+
+#[test]
+#[should_panic(expected = "owner")]
+fn strangers_cant_move_the_festival_floor() {
+    let mut t = genesis();
+    as_("mallory.testnet", T0);
+    t.set_target_floor(U128(300 * MICRO));
+}
