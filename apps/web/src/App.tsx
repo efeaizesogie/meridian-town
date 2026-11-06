@@ -193,7 +193,9 @@ export default function App() {
     try {
       const msg = await run();
       if (msg) say(msg, 'good');
-      await refresh(true);
+      // The action is done once run() returns; a failed refresh afterwards isn't the action failing,
+      // and the regular poll picks the new state up a few seconds later.
+      await refresh(true).catch(() => {});
     } catch (e) {
       const why = e instanceof Error ? e.message : String(e);
       say(`${label}: ${why}`, 'bad');
