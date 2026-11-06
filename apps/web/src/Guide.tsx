@@ -1,7 +1,8 @@
 // The town guide and the leaderboard. The guide mirrors docs/HOW-TO-PLAY.md.
 import { useEffect, useState } from 'react';
-import { fmt, short } from './types';
+import { KEEPERS, fmt, short } from './types';
 import { Icon } from './Icon';
+import type { World } from './App';
 
 const CHAPTERS: { title: string; body: React.ReactNode }[] = [
   {
@@ -119,7 +120,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
 
 interface Leader { accountId: string; name: string; title: string; level: number; coins: string; deeds: string[] }
 
-export function Leaders({ account, onClose }: { account: string; onClose: () => void }) {
+export function Leaders({ account, world, onClose }: { account: string; world: World; onClose: () => void }) {
   const [rows, setRows] = useState<Leader[] | null>(null);
   useEffect(() => {
     fetch('/api/leaders').then(r => r.json()).then(setRows).catch(() => setRows([]));
@@ -150,6 +151,28 @@ export function Leaders({ account, onClose }: { account: string; onClose: () => 
             </tbody>
           </table>
         )}
+        <h3 className="section-title">Shopkeepers</h3>
+        <p className="hint">The agent arena: every shop ranked by its till plus what it has paid its deed holder. A deed holder can replace the house merchant with their own agent.</p>
+        <table className="leaders">
+          <thead><tr><th>#</th><th>Shop</th><th>Run by</th><th>Till</th><th>Paid out</th></tr></thead>
+          <tbody>
+            {[...world.shops]
+              .sort((a, b) => Number(BigInt(b.cash) + BigInt(b.shop.dividends_paid) - BigInt(a.cash) - BigInt(a.shop.dividends_paid)))
+              .map((s, i) => {
+                const house = world.agents?.[s.shop.id]?.accountId;
+                const runBy = !s.shop.agent ? 'nobody' : s.shop.agent === house ? `${KEEPERS[s.shop.id]?.keeper ?? 'house'} (house AI)` : `${short(s.shop.agent)} (player’s agent)`;
+                return (
+                  <tr key={s.shop.id}>
+                    <td>{i + 1}</td>
+                    <td>{s.shop.name}{s.shop.open ? '' : ' (closed)'}</td>
+                    <td>{runBy}</td>
+                    <td>{fmt(s.cash, 0)}</td>
+                    <td>{fmt(s.shop.dividends_paid, 0)}</td>
+                  </tr>
+                );
+              })}
+          </tbody>
+        </table>
       </div>
     </div>
   );

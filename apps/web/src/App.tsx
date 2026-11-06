@@ -291,6 +291,11 @@ export default function App() {
         report(hash, 'board');
         return `Delivered ${qty} ${job.item} and got ${fmt(value)} MERI from escrow.`;
       }),
+    appoint: (shopId, agent) =>
+      act('Appoint', async () => {
+        await call('set_agent', { shop_id: shopId, agent }, 30);
+        return agent ? `${agent} now runs your ${world.shops.find(x => x.shop.id === shopId)?.shop.name ?? 'shop'}.` : 'Your shop has no agent now.';
+      }),
     bid: (shopId, amountMicro) =>
       act('Bid', async () => {
         const { hash } = await call('bid_for_deed', { shop_id: shopId, amount: String(amountMicro) });
@@ -352,7 +357,7 @@ export default function App() {
       </div>
       {modal === 'ff' && <FastForward world={world} onClose={() => setModal(null)} />}
       {modal === 'guide' && <Guide onClose={() => setModal(null)} />}
-      {modal === 'leaders' && <Leaders account={account} onClose={() => setModal(null)} />}
+      {modal === 'leaders' && <Leaders account={account} world={world} onClose={() => setModal(null)} />}
       {modal === 'account' && <AccountPanel network={config.network} onClose={() => setModal(null)} onSignOut={() => { signOut(); setModal(null); setAccount(null); }} />}
       {modal === 'earnings' && <Earnings world={world} account={account} network={config.network} onClose={() => setModal(null)} act={act} busy={busy} />}
     </div>

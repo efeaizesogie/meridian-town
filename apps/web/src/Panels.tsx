@@ -55,8 +55,9 @@ export function NoticeBoard({ world, busy, onDeliver }: { world: World; busy: st
   );
 }
 
-export function Deeds({ world, account, busy, onBid }: { world: World; account: string; busy: string | null; onBid: (shopId: string, amount: bigint) => void }) {
+export function Deeds({ world, account, busy, onBid, onAppoint }: { world: World; account: string; busy: string | null; onBid: (shopId: string, amount: bigint) => void; onAppoint: (shopId: string, agent: string | null) => void }) {
   const [amount, setAmount] = useState<Record<string, string>>({});
+  const [agentFor, setAgentFor] = useState<Record<string, string>>({});
   const reserve = BigInt(world.params.auction_reserve);
   const mine = world.shops.filter(s => s.deed_holder === account);
   return (
@@ -91,12 +92,23 @@ export function Deeds({ world, account, busy, onBid }: { world: World; account: 
       })}
       {mine.length > 0 && (
         <div className="owned">
-          <h3>Your deeds</h3>
-          {mine.map(s => (
-            <div key={s.shop.id} className="muted">
-              {s.shop.name}: till {fmt(s.cash, 0)}, {fmt(s.shop.dividends_paid)} paid to you so far
-            </div>
-          ))}
+          <h3>Your shops</h3>
+          <p className="hint">You choose who runs each shop: the house merchant, or any NEAR account running your own agent. The agent sets prices and posts contracts within the town’s limits; you collect the dividends. See the arena guide in the repo (docs/ARENA.md).</p>
+          {mine.map(s => {
+            const house = world.agents?.[s.shop.id]?.accountId;
+            const runBy = !s.shop.agent ? 'nobody yet' : s.shop.agent === house ? 'the house merchant' : short(s.shop.agent);
+            const draft = agentFor[s.shop.id] ?? '';
+            return (
+              <div key={s.shop.id} className="my-shop">
+                <div><strong>{s.shop.name}</strong> <span className="muted">till {fmt(s.cash, 0)}, {fmt(s.shop.dividends_paid)} paid out, run by {runBy}</span></div>
+                <div className="row">
+                  <input className="small agent-input" value={draft} onChange={e => setAgentFor({ ...agentFor, [s.shop.id]: e.target.value.trim().toLowerCase() })} placeholder="your-agent.testnet" aria-label={`Agent account for ${s.shop.name}`} />
+                  <button className="small primary" disabled={!!busy || draft.length < 3} onClick={() => onAppoint(s.shop.id, draft)}>Appoint</button>
+                  {house && s.shop.agent !== house && <button className="small" disabled={!!busy} onClick={() => onAppoint(s.shop.id, house)}>Use the house merchant</button>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

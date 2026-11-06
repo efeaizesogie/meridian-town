@@ -499,3 +499,7 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
 .cashout .hint { margin: 0; }
 .cashout-row { flex-wrap: wrap; }
 .cashout-row input { width: 120px; }
+
+.my-shop { display: grid; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line); }
+.my-shop .row { flex-wrap: wrap; }
+.agent-input { width: 200px !important; }

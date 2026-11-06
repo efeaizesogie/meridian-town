@@ -19,6 +19,7 @@ export interface Actions {
   build: (item: 'bread' | 'tool') => void;
   deliver: (job: Job, qty: number) => void;
   bid: (shopId: string, amount: bigint) => void;
+  appoint: (shopId: string, agent: string | null) => void;
   claim: () => void;
 }
 
@@ -50,7 +51,7 @@ export function PlaceDrawer({ place, world, config, account, busy, act, actions,
         prev={prevShops?.find(p => p.shop.id === s.shop.id)} params={world.params} player={world.player} busy={busy} onSell={actions.sell} onBuy={actions.buy} />
     );
   } else if (place === 'board') body = <NoticeBoard world={world} busy={busy} onDeliver={actions.deliver} />;
-  else if (place === 'auction') body = <Deeds world={world} account={account} busy={busy} onBid={actions.bid} />;
+  else if (place === 'auction') body = <Deeds world={world} account={account} busy={busy} onBid={actions.bid} onAppoint={actions.appoint} />;
   else if (place === 'guildhall') body = <GuildHall world={world} account={account} busy={busy} act={act} town={config.town} />;
   else if (place === 'caravan') body = <Caravan world={world} />;
   else if (place === 'cottage') body = <Cottage world={world} busy={busy} actions={actions} />;
