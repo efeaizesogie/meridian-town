@@ -31,7 +31,8 @@ let account: Account | null = null;
 
 export async function loadConfig(): Promise<Config> {
   config = await (await fetch('/api/config')).json();
-  provider = new FailoverRpcProvider(config.rpcs.map(url => new JsonRpcProvider({ url })));
+  // One quick retry per endpoint, then the next: a stuck RPC must not leave a player waiting.
+  provider = new FailoverRpcProvider(config.rpcs.map(url => new JsonRpcProvider({ url }, { retries: 1, wait: 400, backoff: 1.5 })));
   try {
     const saved = localStorage.getItem(SESSION);
     if (saved) setSession(JSON.parse(saved));

@@ -8,7 +8,7 @@ export const NETWORK = process.env.NEAR_NETWORK ?? 'testnet';
 /** RPC endpoints, tried in turn. Free public RPCs rate-limit, so one is never enough. */
 export const RPCS = (process.env.NEAR_RPCS ?? (NETWORK === 'mainnet'
   ? 'https://rpc.mainnet.fastnear.com,https://archival-rpc.mainnet.fastnear.com,https://rpc.mainnet.near.org'
-  : 'https://near-testnet.drpc.org,https://testnet-rpc.intea.rs,https://test.rpc.fastnear.com,https://archival-rpc.testnet.fastnear.com,https://archival-rpc.testnet.near.org')).split(',');
+  : 'https://test.rpc.fastnear.com,https://testnet-rpc.intea.rs,https://near-testnet.drpc.org,https://archival-rpc.testnet.fastnear.com,https://archival-rpc.testnet.near.org')).split(',');
 export const RPC = RPCS[0];
 export const TOWN = process.env.TOWN_CONTRACT ?? 'town.efecode.testnet';
 export const GAME = process.env.GAME_ACCOUNT ?? 'game.efecode.testnet';
@@ -17,7 +17,8 @@ export const GAME = process.env.GAME_ACCOUNT ?? 'game.efecode.testnet';
 const PLAYER_GAS_MONEY = nearToYocto('0.1');
 const PLAYER_KEY_ALLOWANCE = nearToYocto('1');
 
-export const provider = new FailoverRpcProvider(RPCS.map(url => new JsonRpcProvider({ url })));
+// One quick retry per endpoint, then the next, so one stuck RPC can't stall the game.
+export const provider = new FailoverRpcProvider(RPCS.map(url => new JsonRpcProvider({ url }, { retries: 1, wait: 400, backoff: 1.5 })));
 
 function loadGameKey(): string {
   if (process.env.GAME_PRIVATE_KEY) return process.env.GAME_PRIVATE_KEY;

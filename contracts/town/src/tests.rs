@@ -229,8 +229,11 @@ fn festival_hit_mints_a_pool_players_claim() {
 fn festival_miss_burns_treasury() {
     let mut t = genesis();
     let treasury = t.coin_of(&town_id());
-    as_("keeper.testnet", T0 + 7 * DAY_NS + 1);
-    t.advance();
+    // The keeper catches up a few days per call; a week takes several calls.
+    while t.processed_days < 7 {
+        as_("keeper.testnet", T0 + 7 * DAY_NS + 1);
+        t.advance();
+    }
     let w = &t.get_weeks(None, None)[0];
     assert!(!w.hit);
     // Upkeep arrives daily before the burn: 6 shops × 25 × 7 days.
@@ -570,4 +573,38 @@ fn only_guilds_share_out() {
     fund(&mut t, "ada.testnet", 100);
     as_("ada.testnet", T0 + 2);
     t.share_out(vec![(acc("bob.testnet"), U128(20 * MICRO))]);
+}
+
+/// NEAR rejects any single log over 16 KiB, which reverts the whole call: a town left alone
+/// for weeks must still catch up.
+#[test]
+fn every_log_fits_through_weeks_of_idle_days() {
+    let mut t = genesis();
+    let mut worst = (0usize, String::new());
+    for day in 0..60u64 {
+        run_to_day(&mut t, day);
+        for l in near_sdk::test_utils::get_logs() {
+            if l.len() > worst.0 {
+                worst = (l.len(), l.chars().take(160).collect());
+            }
+        }
+    }
+    assert!(worst.0 < 16_384, "log of {} bytes: {}", worst.0, worst.1);
+}
+
+/// NEAR caps the *total* log output of one call at 16 KiB. A town that fell weeks behind must
+/// catch up in calls that each stay under it, or `advance` reverts forever.
+#[test]
+fn catching_up_a_long_backlog_stays_under_the_log_budget() {
+    let mut t = genesis();
+    let mut calls = 0;
+    while t.processed_days < 200 {
+        // A fresh context per call: the mock, like the chain, counts logs per call.
+        as_("keeper.testnet", T0 + 200 * DAY_NS + 1);
+        t.advance();
+        let total: usize = near_sdk::test_utils::get_logs().iter().map(|l| l.len()).sum();
+        assert!(total < 16_384, "one advance logged {total} bytes");
+        calls += 1;
+        assert!(calls < 200, "advance made no progress");
+    }
 }

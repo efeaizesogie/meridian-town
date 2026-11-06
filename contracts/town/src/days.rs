@@ -9,8 +9,12 @@ use crate::params::Item;
 use crate::deeds::AuctionKind;
 use crate::{events, sub, PlayerWeek, Town, TownExt, WeekResult};
 
-/// At most this many days are processed per call, to stay inside the gas limit.
-const MAX_DAYS_PER_CALL: u32 = 14;
+/// NEAR caps the total log output of one call at 16 KiB, and a busy market day logs a few KiB
+/// (upkeep, production, caravan fills, dividends, the Festival). The keeper's `advance` catches
+/// up this many days per call; a player's own action catches up at most one, so a trade never
+/// pays for (or fails on) someone else's backlog.
+pub(crate) const ADVANCE_DAYS_PER_CALL: u32 = 2;
+pub(crate) const ACTION_DAYS_PER_CALL: u32 = 1;
 
 #[near]
 impl Town {
@@ -41,9 +45,13 @@ impl Town {
     }
 
     pub(crate) fn catch_up(&mut self) {
+        self.catch_up_by(ACTION_DAYS_PER_CALL);
+    }
+
+    pub(crate) fn catch_up_by(&mut self, max_days: u32) {
         let today = self.today();
         let mut n = 0;
-        while self.processed_days < today && n < MAX_DAYS_PER_CALL {
+        while self.processed_days < today && n < max_days {
             self.end_day();
             self.processed_days += 1;
             if self.processed_days % self.params.days_per_week == 0 {

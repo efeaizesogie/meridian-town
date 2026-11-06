@@ -123,7 +123,7 @@ impl Town {
 
     /// Anyone can push the town's clock forward (upkeep, production, festival).
     pub fn advance(&mut self) -> u32 {
-        self.catch_up();
+        self.catch_up_by(crate::days::ADVANCE_DAYS_PER_CALL);
         self.processed_days
     }
 
