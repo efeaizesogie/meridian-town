@@ -95,7 +95,7 @@ export function Hud({ world, account, purseRef, onAccount, onEarnings, onGuide, 
       </div>
 
       <button className="hud-festival" onClick={onFestival} title="The town's weekly target. Hit it and the Festival mints MERI to everyone who traded; miss it and the treasury burns.">
-        <span className="with-icon"><Icon name="flag" /> Festival in {mmss(weekEnd - (now - skewMs))}</span>
+        <span className="with-icon"><Icon name="flag" /> Festival in {mmss(weekEnd - (now - skewMs))}<span className="fest-mini">{counted.toFixed(0)}/{target.toFixed(0)}{claimable > 0n ? ' · share ready' : ''}</span></span>
         <div className="bar"><div className={mood >= 1 ? 'hit' : ''} style={{ width: `${mood * 100}%` }} /></div>
         <span className="muted">{counted.toFixed(0)} of {target.toFixed(0)} traded, streak {world.town.streak}{claimable > 0n ? <b className="claim"> Your share is ready</b> : null}</span>
       </button>
@@ -123,11 +123,13 @@ export function Hud({ world, account, purseRef, onAccount, onEarnings, onGuide, 
 
 export function QuestTracker({ world, step, onGo }: { world: World; step: Step | null; onGo: () => void }) {
   const me = world.me;
+  const [open, setOpen] = useState(false);
   if (!me) return null;
   const done = me.quests.filter(q => q.done).length;
   const q = me.current;
   return (
-    <aside className="quest" aria-live="polite">
+    // On phones this is a slim bar above the tabs; tap it to read the whole step.
+    <aside className={`quest ${open ? 'open' : ''}`} aria-live="polite" onClick={e => !(e.target as HTMLElement).closest('button') && setOpen(o => !o)}>
       <div className="quest-head">
         <span className="with-icon"><Icon name="scroll" /> {q ? 'Quest' : 'Quests complete'}</span>
         <span className="dots" aria-label={`${done} of ${me.quests.length} done`}>

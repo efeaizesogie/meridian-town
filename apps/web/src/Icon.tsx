@@ -6,7 +6,7 @@ export type IconName =
   | 'wood' | 'ore' | 'wheat' | 'bread' | 'tool'
   | 'coin' | 'stamina' | 'book' | 'rosette' | 'map' | 'island' | 'music' | 'sound' | 'mute'
   | 'door' | 'close' | 'scroll' | 'flag' | 'sack' | 'sun' | 'dusk' | 'moon' | 'forward'
-  | 'axe' | 'pick' | 'sickle' | 'house' | 'key';
+  | 'axe' | 'pick' | 'sickle' | 'house' | 'key' | 'more' | 'plus' | 'minus';
 
 const P: Record<IconName, React.ReactNode> = {
   wood: <>
@@ -79,6 +79,13 @@ const P: Record<IconName, React.ReactNode> = {
     <circle className="ic-pear" cx="12.3" cy="11" r="1.1" />
   </>,
   close: <path className="ic-line ic-thick" d="M5 5l10 10M15 5 5 15" />,
+  more: <>
+    <circle className="ic-pear" cx="4" cy="10" r="2" />
+    <circle className="ic-pear" cx="10" cy="10" r="2" />
+    <circle className="ic-pear" cx="16" cy="10" r="2" />
+  </>,
+  plus: <path className="ic-line ic-thick" d="M10 4v12M4 10h12" />,
+  minus: <path className="ic-line ic-thick" d="M4 10h12" />,
   scroll: <>
     <path className="ic-card" d="M5 4h10v12H5z" />
     <path className="ic-sand" d="M3.5 3.5h13a1.5 1.5 0 0 1 0 3h-13a1.5 1.5 0 0 1 0-3zM3.5 14.5h13a1.5 1.5 0 0 1 0 3h-13a1.5 1.5 0 0 1 0-3z" />

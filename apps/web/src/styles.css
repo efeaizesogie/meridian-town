@@ -514,3 +514,111 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
   .label3d b { display: none; }
   .label3d.on b { display: block; }
 }
+
+/* ---------- phones: a game you play with one thumb ---------- */
+.tabbar, .more-sheet, .more-backdrop, .zoom-btns, .fest-mini, .sheet-backdrop, .grab { display: none; }
+@keyframes fadein { from { opacity: 0; } }
+
+/* The place drawer is a bottom sheet below 860px: a handle to drag it away, the map dimmed behind. */
+@media (max-width: 860px) {
+  .sheet-backdrop { display: block; position: fixed; inset: 0; z-index: 19; background: color-mix(in oklab, var(--ink) 26%, transparent); animation: fadein 0.2s ease-out; }
+  .drawer-head { position: relative; padding-top: 22px; touch-action: none; cursor: grab; }
+  .grab { display: block; position: absolute; top: 8px; left: 50%; width: 44px; height: 5px; margin-left: -22px; border-radius: 3px; background: var(--color-sand); }
+}
+
+@media (max-width: 720px) {
+  .game.phone { padding-bottom: calc(136px + env(safe-area-inset-bottom, 0px)); }
+  input { font-size: 16px; } /* below 16px, iPhones zoom the page when a field is tapped */
+
+  /* compact top bar: who you are and your purse on one line, the Festival as a chip */
+  .hud { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "id purse" "fest fest"; gap: 6px 12px; padding: 8px 12px; position: sticky; top: 0; }
+  .hud-id { grid-area: id; gap: 8px; }
+  .avatar { width: 34px; height: 34px; font-size: 16px; }
+  .hud-id .title { display: none; }
+  .hud-purse { grid-area: purse; grid-column: auto; text-align: right; min-width: 108px; }
+  .coins { font-size: 18px; padding: 2px 8px; }
+  .stamina { height: 16px; margin-top: 2px; }
+  .hud-festival { grid-area: fest; grid-column: auto; order: 0; padding: 6px 12px; min-height: 36px; justify-content: center; }
+  .hud-festival .bar, .hud-festival > .muted { display: none; }
+  .hud-festival > span:first-child { font-size: 13px; width: 100%; }
+  .fest-mini { display: inline; margin-left: auto; color: var(--ink-2); }
+  .phone .hud-menu, .phone .map-tools { display: none; }
+
+  /* the map fills the width as a square window you drag and pinch */
+  .map-wrap { padding: 0; }
+  .map-wrap.flat .town { width: 100%; max-height: none; aspect-ratio: 1 / 1; border-radius: 0; box-shadow: none; }
+  .town.zoomable { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  .town .map-label { font-size: 21px; stroke-width: 5px; }
+  .town .sign { transform-box: fill-box; transform-origin: center; transform: scale(1.3); }
+  .town .bubble text { font-size: 19px; }
+  .bubble3d { width: 180px; font-size: 12px; padding: 6px 10px; }
+  .floaters { inset: 0; }
+  .zoom-btns { display: flex; flex-direction: column; gap: 8px; position: absolute; right: 10px; top: 10px; }
+  .zoom-btns .icon-btn { width: 44px; height: 44px; background: var(--grain), var(--color-card); }
+
+  /* the quest is a slim bar above the tabs; tap it to read the whole step */
+  .game.phone .quest { position: fixed; left: 8px; right: 8px; top: auto; bottom: calc(68px + env(safe-area-inset-bottom, 0px)); width: auto; margin: 0; z-index: 18;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title go" "text go"; column-gap: 12px; align-items: center; padding: 8px 8px 8px 14px; border-radius: 16px; cursor: pointer; }
+  .game.phone .quest .quest-head, .quest .xp-pill { display: none; }
+  .game.phone .quest strong { grid-area: title; margin: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .game.phone .quest p { grid-area: text; margin: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .game.phone .quest.open p { white-space: normal; }
+  .game.phone .quest button { grid-area: go; min-height: 44px; }
+  .game.phone .stage.with-drawer .quest { display: none; }
+
+  /* the drawer sits above the tabs */
+  .drawer { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); max-height: calc(80dvh - 64px); }
+  .toasts { bottom: calc(140px + env(safe-area-inset-bottom, 0px)); }
+  .stage.with-drawer ~ .toasts { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+
+  /* bottom tab bar */
+  .tabbar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; left: 0; right: 0; bottom: 0; z-index: 22;
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px)); background: var(--grain), var(--color-card);
+    box-shadow: 0 -1px 0 var(--color-rule), 0 -8px 20px -14px var(--shadow-press); }
+  .tabbar button { --edge: 0px; background: none; box-shadow: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    min-height: 56px; padding: 4px 0; font-size: 11px; font-weight: 600; color: var(--muted); border-radius: 14px; }
+  .tabbar button:hover:not(:disabled), .tabbar button:active:not(:disabled) { translate: none; }
+  .tabbar button.on { color: var(--ink); background: var(--color-paper-2); }
+
+  .more-backdrop { display: block; position: fixed; inset: 0; z-index: 23; background: color-mix(in oklab, var(--ink) 26%, transparent); animation: fadein 0.2s ease-out; }
+  .more-sheet { display: flex; flex-direction: column; gap: 2px; position: fixed; left: 8px; right: 8px; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); z-index: 24;
+    max-height: calc(100dvh - 100px); overflow: auto; padding: 8px; border-radius: 20px; background: var(--grain), var(--color-card);
+    box-shadow: inset 0 0 0 1.5px var(--ink), var(--shadow-card); animation: slideup 0.2s var(--ease-snap); }
+  .more-row { --edge: 0px; display: flex; align-items: center; gap: 12px; text-align: left; min-height: 52px; padding: 8px 12px; background: none; box-shadow: none; font-weight: 600; font-size: 15px; border-radius: 14px; }
+  .more-row:hover:not(:disabled), .more-row:active:not(:disabled) { translate: none; background: var(--color-paper-2); }
+  .more-row small { display: block; font-weight: 500; font-size: 12px; color: var(--muted); }
+  .more-toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 4px; }
+  .more-toggles button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; font-size: 14px; }
+  .more-toggles button:not(.on) { opacity: 0.6; }
+  .more-hint { display: flex; gap: 12px; align-items: flex-start; margin: 0; padding: 8px 12px; font-size: 13px; color: var(--ink-2); }
+
+  /* thumb-sized controls */
+  button.small { min-height: 44px; padding: 10px 14px; font-size: 14px; }
+  .icon-btn { width: 44px; height: 44px; }
+  .drawer-head button.link { min-width: 44px; min-height: 44px; display: grid; place-items: center; }
+  .prices tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "item stock" "buy sell"; gap: 6px 8px; padding: 10px 0; border-bottom: 1px solid var(--color-rule); }
+  .prices td { padding: 0; }
+  .prices td.item { grid-area: item; align-self: center; }
+  .prices td.stock { grid-area: stock; width: auto; display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+  .prices td:nth-child(3) { grid-area: buy; }
+  .prices td:nth-child(4) { grid-area: sell; }
+  .price { font-size: 14px; min-height: 44px; padding: 8px 10px; }
+}
+
+/* phones on their side: the map on the left, the place you opened on the right */
+@media (orientation: landscape) and (max-height: 520px) {
+  .hud { position: static; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto auto; padding: 6px 12px; gap: 12px; }
+  .hud-festival { grid-column: auto; order: 0; padding: 4px 10px; }
+  .hud-festival .bar, .hud-festival > .muted { display: none; }
+  .fest-mini { display: inline; margin-left: 8px; color: var(--ink-2); }
+  .hud-menu .icon-btn { width: 40px; height: 40px; }
+  .stage.with-drawer { grid-template-columns: minmax(0, 1fr) min(400px, 46vw); }
+  .drawer { position: sticky; top: 0; left: auto; right: auto; bottom: auto; grid-column: 2; grid-row: 1 / span 2; max-height: 100dvh; border-radius: 0; z-index: auto; box-shadow: inset 1px 0 0 var(--color-rule); animation: slidein 0.22s var(--ease-snap); }
+  .drawer-head { padding-top: 16px; cursor: default; }
+  .sheet-backdrop, .grab { display: none; }
+  .map-wrap { flex-direction: row; padding: 8px; }
+  .town { max-height: calc(100dvh - 16px); }
+  .quest { position: absolute; top: 16px; left: 16px; width: min(260px, 40%); margin: 0; }
+  .stage.with-drawer .quest { display: none; }
+  .toasts { top: 12px; bottom: auto; }
+}

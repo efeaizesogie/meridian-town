@@ -1,8 +1,9 @@
 // The town map is the main screen: every place in Meridian, drawn in SVG, clickable.
 // Shops show what they pay and what their keeper last said; the map darkens as the day ends.
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { World } from './App';
 import { ITEMS, KEEPERS, meri, type Item } from './types';
+import { Icon } from './Icon';
 
 export type Place =
   | 'g:forest' | 'g:mine' | 'g:fields'
@@ -57,14 +58,95 @@ function signFor(world: World, shopId: string): { text: string; hot: boolean } {
   return { text: sells.map(x => `${x.item} ${x.v.toFixed(2)}`).slice(0, 2).join('  '), hot: false };
 }
 
-export function TownMap({ world, onOpen, selected, questPlace, here }: {
+export type View = { x: number; y: number; w: number; h: number };
+
+/**
+ * Pan and pinch-zoom for the map on phones. The map is drawn 1000 x 680; a phone shows a square
+ * window onto it that the player drags around and pinches in and out of. A drag doesn't count
+ * as a tap, so moving the map never opens a place by accident.
+ */
+function usePanZoom(on: boolean, focus: Place | null) {
+  const A = on ? 1 : W / H; // the window's width / height
+  const maxW = on ? H * A : W;
+  const minW = 320;
+  const fit = (v: { x: number; y: number; w: number }): View => {
+    const w = Math.max(minW, Math.min(maxW, v.w));
+    const h = w / A;
+    return { x: Math.max(0, Math.min(W - w, v.x)), y: Math.max(0, Math.min(H - h, v.y)), w, h };
+  };
+  const [view, setView] = useState<View>(() => fit({ x: (W - maxW) / 2, y: 0, w: maxW }));
+  useEffect(() => setView(fit({ x: (W - maxW) / 2, y: 0, w: maxW })), [on]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Bring the place the player is going to into view.
+  useEffect(() => {
+    if (!on || !focus || !SPOTS[focus]) return;
+    const { x, y } = SPOTS[focus];
+    setView(v => {
+      const inside = x > v.x + 60 && x < v.x + v.w - 60 && y > v.y + 60 && y < v.y + v.h - 60;
+      return inside ? v : fit({ x: x - v.w / 2, y: y - v.h / 2, w: v.w });
+    });
+  }, [on, focus]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const svg = useRef<SVGSVGElement>(null);
+  const pts = useRef(new Map<number, { x: number; y: number }>());
+  const travel = useRef(0);
+  const scale = () => view.w / (svg.current?.getBoundingClientRect().width || 1);
+
+  const zoomAt = (k: number, cx?: number, cy?: number) => setView(v => {
+    const w = Math.max(minW, Math.min(maxW, v.w / k));
+    const px = cx ?? v.x + v.w / 2, py = cy ?? v.y + v.h / 2;
+    return fit({ x: px - ((px - v.x) * w) / v.w, y: py - ((py - v.y) * w) / v.w, w });
+  });
+
+  const handlers = on ? {
+    onPointerDown: (e: React.PointerEvent) => {
+      pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.current.size === 1) travel.current = 0;
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      const p = pts.current.get(e.pointerId);
+      if (!p) return;
+      const s = scale();
+      if (pts.current.size === 1) {
+        const dx = e.clientX - p.x, dy = e.clientY - p.y;
+        travel.current += Math.abs(dx) + Math.abs(dy);
+        setView(v => fit({ x: v.x - dx * s, y: v.y - dy * s, w: v.w }));
+      } else if (pts.current.size === 2) {
+        const [a, b] = [...pts.current.entries()];
+        const other = a[0] === e.pointerId ? b[1] : a[1];
+        const before = Math.hypot(p.x - other.x, p.y - other.y);
+        const after = Math.hypot(e.clientX - other.x, e.clientY - other.y);
+        travel.current += 20;
+        const r = svg.current!.getBoundingClientRect();
+        const mx = view.x + (((p.x + other.x) / 2) - r.left) * s;
+        const my = view.y + (((p.y + other.y) / 2) - r.top) * s;
+        if (before > 0) zoomAt(after / before, mx, my);
+      }
+      pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    },
+    onPointerUp: (e: React.PointerEvent) => { pts.current.delete(e.pointerId); },
+    onPointerCancel: (e: React.PointerEvent) => { pts.current.delete(e.pointerId); },
+    onPointerLeave: (e: React.PointerEvent) => { pts.current.delete(e.pointerId); },
+    // A drag or a pinch isn't a tap: swallow the click it ends with.
+    onClickCapture: (e: React.MouseEvent) => { if (travel.current > 10) { e.stopPropagation(); e.preventDefault(); } },
+  } : {};
+
+  return { view, svg, handlers, zoomAt, canIn: view.w > minW + 1, canOut: view.w < maxW - 1 };
+}
+
+export function TownMap({ world, onOpen, selected, questPlace, here, phone = false, onView }: {
   world: World;
   onOpen: (p: Place) => void;
   selected: Place | null;
   questPlace: Place | null;
   here: Place | null;
+  phone?: boolean;
+  onView?: (v: View) => void;
 }) {
   const tick = useTick(6000);
+  const pz = usePanZoom(phone, selected);
+  const { view } = pz;
+  useEffect(() => onView?.(view), [view.x, view.y, view.w]); // eslint-disable-line react-hooks/exhaustive-deps
   const { genesisMs, dayMs, skewMs } = world.clock;
   const intoDay = (((Date.now() - skewMs - genesisMs) % dayMs) + dayMs) % dayMs / dayMs;
   const night = intoDay < 0.7 ? 0 : intoDay < 0.85 ? ((intoDay - 0.7) / 0.15) * 0.28 : 0.28 + ((intoDay - 0.85) / 0.15) * 0.12;
@@ -114,7 +196,8 @@ export function TownMap({ world, onOpen, selected, questPlace, here }: {
   };
 
   return (
-    <svg className="town" viewBox={`0 0 ${W} ${H}`} role="group" aria-label="Map of Meridian Town">
+    <>
+    <svg ref={pz.svg} className={`town ${phone ? 'zoomable' : ''}`} viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`} role="group" aria-label="Map of Meridian Town" {...pz.handlers}>
       <defs>
         <radialGradient id="grass" cx="50%" cy="45%" r="70%">
           <stop offset="0%" stopColor="#b5d38f" />
@@ -270,17 +353,34 @@ export function TownMap({ world, onOpen, selected, questPlace, here }: {
       {speaker && SPOTS[`s:${speaker.shopId}`] && (() => {
         const { x, y } = SPOTS[`s:${speaker.shopId}`];
         const text = speaker.say.replace(/^[A-Z][a-z]+:\s*/, '');
-        const short = text.length > 58 ? text.slice(0, 56) + '…' : text;
-        const w = Math.min(330, 30 + short.length * 6.2);
-        const bx = Math.max(10, Math.min(W - w - 10, x - w / 2));
-        return (
-          <g className="bubble" key={`${speaker.shopId}${speaker.at}`} pointerEvents="none">
-            <rect x={bx} y={y - 100} width={w} height={34} rx={10} />
-            <polygon points={`${x - 8},${y - 67} ${x + 8},${y - 67} ${x},${y - 56}`} />
-            <text x={bx + 12} y={y - 79}><tspan className="who">{KEEPERS[speaker.shopId]?.keeper}:</tspan> {short}</text>
-          </g>
-        );
+        // Phones see a narrower window onto the map, so their bubbles say less.
+        const max = phone ? 30 : 58;
+        const short = text.length > max ? text.slice(0, max - 2).trimEnd() + '…' : text;
+        return <Bubble key={`${speaker.shopId}${speaker.at}`} x={x} y={y} who={KEEPERS[speaker.shopId]?.keeper ?? ''} text={short} left={view.x} width={view.w} />;
       })()}
     </svg>
+    {phone && (
+      <div className="zoom-btns">
+        <button className="icon-btn" onClick={() => pz.zoomAt(1.4)} disabled={!pz.canIn} aria-label="Zoom in"><Icon name="plus" size={20} /></button>
+        <button className="icon-btn" onClick={() => pz.zoomAt(1 / 1.4)} disabled={!pz.canOut} aria-label="Zoom out"><Icon name="minus" size={20} /></button>
+      </div>
+    )}
+    </>
+  );
+}
+
+// A shopkeeper's speech bubble, sized to the text it holds (measured after it renders).
+function Bubble({ x, y, who, text, left = 0, width = W }: { x: number; y: number; who: string; text: string; left?: number; width?: number }) {
+  const ref = useRef<SVGTextElement>(null);
+  const [tw, setTw] = useState(text.length * 7);
+  useLayoutEffect(() => { if (ref.current) setTw(ref.current.getComputedTextLength()); }, [who, text]);
+  const w = Math.min(width - 20, tw + 24);
+  const bx = Math.max(left + 10, Math.min(left + width - w - 10, x - w / 2));
+  return (
+    <g className="bubble" pointerEvents="none">
+      <rect x={bx} y={y - 100} width={w} height={34} rx={10} />
+      <polygon points={`${x - 8},${y - 67} ${x + 8},${y - 67} ${x},${y - 56}`} />
+      <text ref={ref} x={bx + 12} y={y - 78}><tspan className="who">{who}:</tspan> {text}</text>
+    </g>
   );
 }

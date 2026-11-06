@@ -199,9 +199,10 @@ function Chatter({ world }: { world: World }) {
   if (!a) return null;
   const [x, , z] = at(`s:${a.shopId}`);
   const text = a.say.replace(/^[A-Z][a-z]+:\s*/, '');
+  const max = matchMedia('(max-width: 720px)').matches ? 40 : 90; // phones get a shorter line
   return (
     <Html key={`${a.shopId}${a.at}`} position={[x, 8.2, z]} center zIndexRange={[9, 0]} style={{ pointerEvents: 'none' }}>
-      <div className="bubble3d"><b>{KEEPERS[a.shopId]?.keeper}:</b> {text.length > 90 ? text.slice(0, 88) + '…' : text}</div>
+      <div className="bubble3d"><b>{KEEPERS[a.shopId]?.keeper}:</b> {text.length > max ? text.slice(0, max - 2).trimEnd() + '…' : text}</div>
     </Html>
   );
 }

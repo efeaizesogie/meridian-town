@@ -388,7 +388,7 @@ setInterval(async () => {
 
 // ---------- static files (the built web client) ----------
 
-const TYPES: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.woff2': 'font/woff2', '.glb': 'model/gltf-binary', '.txt': 'text/plain' };
+const TYPES: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.woff2': 'font/woff2', '.glb': 'model/gltf-binary', '.txt': 'text/plain', '.webmanifest': 'application/manifest+json' };
 
 // Visitors land on the welcome page at `/`; the game itself lives at `/play`. Every other
 // path is a file from the build, or falls back to the game.

@@ -6,7 +6,9 @@ import { Join } from './Join';
 import { AccountPanel, Earnings } from './Account';
 import { Hud, QuestTracker } from './Hud';
 import { nextStep } from './quest';
-import { TownMap, SPOTS, W, H, type Place } from './TownMap';
+import { TownMap, SPOTS, W, H, type Place, type View } from './TownMap';
+import { TabBar, type Tab } from './Tabs';
+import { buzz, usePhone } from './phone';
 import { PlaceDrawer, type Actions } from './Places';
 import { TownLog } from './Panels';
 import { FastForward } from './FastForward';
@@ -89,6 +91,8 @@ export default function App() {
   const [modal, setModal] = useState<'guide' | 'leaders' | 'ff' | 'account' | 'earnings' | null>(null);
   const [floaters, setFloaters] = useState<Floater[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const phone = usePhone();
+  const [mapView, setMapView] = useState<View | null>(null);
   const nextId = useRef(1);
   const purseRef = useRef<HTMLDivElement | null>(null);
   const worldRef = useRef<World | null>(null);
@@ -200,6 +204,7 @@ export default function App() {
       if (msg) {
         say(msg, 'good');
         toast(msg, 'good');
+        buzz(12);
       }
       // The action is done once run() returns; a failed refresh afterwards isn't the action failing,
       // and the regular poll picks the new state up a few seconds later.
@@ -209,6 +214,7 @@ export default function App() {
       say(`${label}: ${why}`, 'bad');
       toast(why, 'bad');
       play('error');
+      buzz([30, 60, 30]);
     } finally {
       setBusy(null);
     }
@@ -235,6 +241,7 @@ export default function App() {
     gather: ground => {
       const p = `g:${ground}` as Place;
       play('swing');
+      buzz(8);
       return act('Gather', async () => {
         const r = await api<{ item: Item; gathered: number; wanted: number } & Earned>('/api/gather', { ground, swings: config.rules.maxSwingsPerRequest });
         if (r.gathered) float(p, `+${r.gathered} ${r.item}`, 'gain');
@@ -317,8 +324,22 @@ export default function App() {
   const step = nextStep(world);
   const qp = step?.place ?? questPlace(world);
 
+  // A gain rises from its place; on a phone's zoomed map, from where that place is in view.
+  const floatAt = (f: Floater) => {
+    const v = gfx === '2d' && phone && mapView ? mapView : { x: 0, y: 0, w: W, h: H };
+    return { left: `${((f.x - v.x) / v.w) * 100}%`, top: `${((f.y - v.y) / v.h) * 100}%` };
+  };
+
+  const tab: Tab | null = modal === 'earnings' ? 'ledger' : place === 'cottage' ? 'pack' : place && place === qp ? 'quest' : place ? null : 'town';
+  const onTab = (t: Tab) => {
+    if (t === 'town') { setPlace(null); setModal(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    else if (t === 'quest') { setModal(null); if (qp) open(qp); }
+    else if (t === 'pack') { setModal(null); open('cottage'); }
+    else setModal('earnings');
+  };
+
   return (
-    <div className="game">
+    <div className={`game ${phone ? 'phone' : ''}`}>
       <Hud world={world} account={account} purseRef={purseRef}
         onAccount={() => setModal('account')} onEarnings={() => setModal('earnings')}
         onGuide={() => setModal('guide')} onLeaders={() => setModal('leaders')} onFestival={() => open('festival')}
@@ -327,10 +348,10 @@ export default function App() {
         <div className={`map-wrap ${gfx === '2d' ? 'flat' : ''}`}>
           {gfx === '3d'
             ? <World3D world={world} onOpen={open} selected={place} questPlace={qp} account={account} working={busy === 'Gather'} onFail={() => switchGfx('2d')} />
-            : <TownMap world={world} onOpen={open} selected={place} questPlace={qp} here={here} />}
+            : <TownMap world={world} onOpen={open} selected={place} questPlace={qp} here={here} phone={phone} onView={setMapView} />}
           <div className="floaters" aria-hidden>
             {floaters.map(f => (
-              <span key={f.id} className={`floater ${f.kind}`} style={{ left: `${(f.x / W) * 100}%`, top: `${(f.y / H) * 100}%` }}>{f.text}</span>
+              <span key={f.id} className={`floater ${f.kind}`} style={floatAt(f)}>{f.text}</span>
             ))}
           </div>
           <QuestTracker world={world} step={step} onGo={() => qp && open(qp)} />
@@ -347,11 +368,16 @@ export default function App() {
             </p>
           )}
         </div>
+        {place && <div className="sheet-backdrop" onClick={() => setPlace(null)} aria-hidden />}
         {place && (
           <PlaceDrawer place={place} world={world} config={config} account={account} busy={busy} act={act} actions={actions}
             prevShops={prev?.shops} onClose={() => setPlace(null)} onFastForward={() => setModal('ff')} onGo={open} />
         )}
       </main>
+      {phone && (
+        <TabBar active={tab} onTab={onTab} gfx={gfx} onGfx={() => switchGfx(gfx === '3d' ? '2d' : '3d')}
+          onGuide={() => setModal('guide')} onLeaders={() => setModal('leaders')} onAccount={() => setModal('account')} onFastForward={() => setModal('ff')} />
+      )}
       <div className="toasts" aria-live="assertive">
         {toasts.map(t => <div key={t.id} className={`toast ${t.kind}`}>{t.text}</div>)}
       </div>

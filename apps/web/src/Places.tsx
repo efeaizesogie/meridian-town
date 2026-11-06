@@ -1,6 +1,7 @@
 // What you see and do at each place on the map. Shops, the notice board, the auction house,
 // the guild hall and the caravan reuse their panels; the grounds, your cottage and the
 // Festival stage are drawn here.
+import { useRef } from 'react';
 import type { Act, World } from './App';
 import type { Config } from './near';
 import { SPOTS, type Place } from './TownMap';
@@ -42,6 +43,30 @@ export function PlaceDrawer({ place, world, config, account, busy, act, actions,
   onFastForward: () => void;
   onGo: (p: Place) => void;
 }) {
+  // On phones the drawer is a bottom sheet: drag its handle down to put it away.
+  const sheet = useRef<HTMLElement>(null);
+  const drag = useRef<{ y: number; id: number } | null>(null);
+  const isSheet = () => !!sheet.current && getComputedStyle(sheet.current).position === 'fixed';
+  const dragStart = (e: React.PointerEvent) => {
+    if (!isSheet() || (e.target as HTMLElement).closest('button')) return;
+    drag.current = { y: e.clientY, id: e.pointerId };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const dragMove = (e: React.PointerEvent) => {
+    if (!drag.current || !sheet.current) return;
+    const dy = Math.max(0, e.clientY - drag.current.y);
+    sheet.current.style.transform = `translateY(${dy}px)`;
+    sheet.current.style.transition = 'none';
+  };
+  const dragEnd = (e: React.PointerEvent) => {
+    if (!drag.current || !sheet.current) return;
+    const dy = e.clientY - drag.current.y;
+    drag.current = null;
+    sheet.current.style.transition = 'transform 0.2s ease-out';
+    sheet.current.style.transform = '';
+    if (dy > 70) onClose();
+  };
+
   let body: React.ReactNode = null;
   if (place.startsWith('g:')) body = <Ground place={place} world={world} config={config} busy={busy} actions={actions} onGo={onGo} />;
   else if (place.startsWith('s:')) {
@@ -58,8 +83,9 @@ export function PlaceDrawer({ place, world, config, account, busy, act, actions,
   else if (place === 'festival') body = <Festival world={world} onClaim={actions.claim} onFastForward={onFastForward} />;
 
   return (
-    <aside className="drawer" aria-label={SPOTS[place]?.label}>
-      <header className="drawer-head">
+    <aside className="drawer" aria-label={SPOTS[place]?.label} ref={sheet}>
+      <header className="drawer-head" onPointerDown={dragStart} onPointerMove={dragMove} onPointerUp={dragEnd} onPointerCancel={dragEnd}>
+        <span className="grab" aria-hidden />
         <h2>{SPOTS[place]?.label}</h2>
         <button className="link" onClick={onClose} aria-label="Back to the map"><Icon name="close" /></button>
       </header>
