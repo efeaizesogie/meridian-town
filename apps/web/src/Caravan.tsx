@@ -48,7 +48,7 @@ export function Caravan({ world }: { world: World }) {
             if (!orders.length) return null;
             const bids = r.bids.filter(b => b.item === item).sort((a, b) => Number(BigInt(a.price) - BigInt(b.price)));
             return (
-              <div className="good" key={item}>
+              <div className="good-card" key={item}>
                 <div className="good-head">
                   <strong className="with-icon"><Icon name={item} /> {item}</strong>
                   <span className="muted">cost floor {fmt(c!.import_cost[i])}</span>

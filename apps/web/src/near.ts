@@ -235,12 +235,14 @@ export async function call<T = unknown>(methodName: string, args: object, tgas =
 }
 
 function readablePanic(e: unknown): string {
-  const text = e instanceof Error ? `${e.name} ${e.message} ${JSON.stringify((e as any).errors?.map((x: any) => x?.message) ?? [])}` : JSON.stringify(e);
+  const inner: string[] = (e as any)?.errors?.map((x: any) => x?.message).filter(Boolean) ?? [];
+  const text = e instanceof Error ? [e.name, e.message, ...inner].join(' ') : JSON.stringify(e);
+  if (/doesn.t have enough balance|not enough (coins|MERI)/i.test(text)) return 'You don’t have enough MERI for that. Sell some goods first.';
   if (/NotEnoughBalance|not enough balance|LackBalance/i.test(text)) return 'Your account is out of NEAR for transaction fees, so the town can’t take this action yet.';
   if (/Exceeded \d+ providers|RetriesExceeded|Failed to fetch|NetworkError|429|timeout/i.test(text)) return 'The NEAR network is busy right now. Wait a few seconds and try again; nothing was lost.';
   if (/InvalidNonce|nonce/i.test(text)) return 'That clashed with another action from you. Try it once more.';
   const m = text.match(/Smart contract panicked: ([^"\\]+)/) ?? text.match(/panicked at [^:]+:\d+:\d+:\s*([^"\\]+)/);
-  if (m) return m[1].trim();
+  if (m) return m[1].replace(/\s*\[\]\s*$/, '').trim();
   console.error(e);
   return 'That didn’t go through. Try again in a moment; nothing was lost.';
 }

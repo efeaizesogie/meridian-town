@@ -331,7 +331,7 @@ input.small { padding: 4px 8px; width: 90px; border-radius: 10px; }
 
 /* ---------- caravan ---------- */
 .caravan-goods { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-.good { border-radius: 14px; padding: 12px 12px; background: var(--grain), var(--color-paper-2); box-shadow: inset 0 0 0 1px var(--color-rule); display: flex; flex-direction: column; gap: 4px; }
+.good-card { border-radius: 14px; padding: 12px; background: var(--grain), var(--color-paper-2); box-shadow: inset 0 0 0 1px var(--color-rule); display: flex; flex-direction: column; gap: 4px; }
 .good-head { display: flex; justify-content: space-between; align-items: baseline; }
 .sealed { font-size: 12px; margin-top: 4px; }
 .sealed .lead { color: var(--green); font-weight: 600; }
@@ -465,3 +465,23 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
 
 .market-line { margin: 0; padding: 12px 16px; border-radius: 14px; background: var(--grain), var(--color-mint); font-size: 14px; }
 .market-line a { color: var(--ink); font-weight: 600; }
+
+/* ground drawer: the swing button's card-stock edge needs room below it */
+.ground-panel { display: grid; gap: 16px; }
+.ground-panel .hint { margin: 0; }
+.ground-panel .meter.big { margin: 0; }
+.ground-panel .swing { margin-bottom: 8px; }
+
+/* errors as toasts */
+.toast.bad { background: var(--grain), var(--color-card); box-shadow: inset 0 0 0 1.5px var(--color-accent-3-deep), 0 4px 0 0 var(--color-accent-3), var(--shadow-card); color: var(--ink); max-width: min(460px, 90vw); font-size: 14px; }
+
+/* flat map: the quest card and tools live below the map instead of covering it */
+.map-wrap.flat { flex-direction: column; align-items: center; gap: 12px; }
+.map-wrap.flat .quest { position: static; width: min(100%, 680px); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; }
+.map-wrap.flat .quest-head, .map-wrap.flat .quest strong, .map-wrap.flat .quest p { grid-column: 1; }
+.map-wrap.flat .quest button { grid-column: 2; grid-row: 1 / span 3; }
+.map-wrap.flat .map-tools { position: static; align-self: center; }
+
+/* 3D: a place's name is a button too */
+.label3d span { pointer-events: auto; cursor: pointer; }
+.label3d span:hover { background: var(--color-accent); }

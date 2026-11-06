@@ -57,7 +57,7 @@ export function Spot({ place, onOpen, selected, quest, children, ring = 3.2, lab
       )}
       <Html position={[0, labelY * scale, 0]} center zIndexRange={[8, 0]} style={{ pointerEvents: 'none' }}>
         <div className={`label3d ${hover || selected ? 'on' : ''}`}>
-          <span>{SPOTS[place].label}</span>
+          <span role="button" tabIndex={0} onClick={() => onOpen(place)} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onOpen(place)}>{SPOTS[place].label}</span>
           {sign && <b className={hot ? 'hot' : ''}>{sign}</b>}
         </div>
       </Html>

@@ -49,7 +49,7 @@ export interface LogLine {
 export type Act = (label: string, run: () => Promise<string | void>) => Promise<void>;
 
 interface Floater { id: number; x: number; y: number; text: string; kind: 'gain' | 'coin' | 'xp' | 'bad' }
-interface Toast { id: number; text: string; kind: 'quest' | 'level' }
+interface Toast { id: number; text: string; kind: 'quest' | 'level' | 'bad' }
 
 /** Where a quest's marker points on the map. */
 function questPlace(world: World): Place | null {
@@ -165,7 +165,7 @@ export default function App() {
   const toast = (text: string, kind: Toast['kind']) => {
     const id = nextId.current++;
     setToasts(t => [...t, { id, text, kind }]);
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), kind === 'level' ? 4000 : 3200);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), kind === 'quest' ? 3200 : 4500);
   };
 
   /** Celebrate what the server says an action earned. */
@@ -195,7 +195,9 @@ export default function App() {
       if (msg) say(msg, 'good');
       await refresh(true);
     } catch (e) {
-      say(`${label}: ${e instanceof Error ? e.message : e}`, 'bad');
+      const why = e instanceof Error ? e.message : String(e);
+      say(`${label}: ${why}`, 'bad');
+      toast(why, 'bad');
       play('error');
     } finally {
       setBusy(null);
@@ -306,7 +308,7 @@ export default function App() {
         onGuide={() => setModal('guide')} onLeaders={() => setModal('leaders')} onFestival={() => open('festival')}
         gfx={gfx} onGfx={() => switchGfx(gfx === '3d' ? '2d' : '3d')} />
       <main className={`stage ${place ? 'with-drawer' : ''}`}>
-        <div className="map-wrap">
+        <div className={`map-wrap ${gfx === '2d' ? 'flat' : ''}`}>
           {gfx === '3d'
             ? <World3D world={world} onOpen={open} selected={place} questPlace={qp} account={account} working={busy === 'Gather'} onFail={() => switchGfx('2d')} />
             : <TownMap world={world} onOpen={open} selected={place} questPlace={qp} here={here} />}

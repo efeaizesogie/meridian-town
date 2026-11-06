@@ -103,7 +103,10 @@ Decided by ${agent.mode === 'llm' ? 'an LLM on NEAR AI Cloud' : 'its strategy ru
                 </td>
                 <td>
                   {canBuy && (
-                    <button className="price buy" disabled={!!busy} title={explain(shop, item, 'ask', params)} onClick={() => onBuy(shop, item, 1)}>
+                    // The ask plus the 2% trade tax must fit in the purse, or the button waits.
+                    <button className="price buy" disabled={!!busy || meri(player?.coins ?? 0) < meri(shop.ask[i]) * 1.03}
+                      title={meri(player?.coins ?? 0) < meri(shop.ask[i]) * 1.03 ? `You need about ${(meri(shop.ask[i]) * 1.02).toFixed(2)} MERI; sell some goods first.` : explain(shop, item, 'ask', params)}
+                      onClick={() => onBuy(shop, item, 1)}>
                       buy {fmt(shop.ask[i])} <Move now={shop.ask[i]} before={prev?.ask[i]} />
                     </button>
                   )}
