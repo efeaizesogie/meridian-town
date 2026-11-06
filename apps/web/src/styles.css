@@ -463,7 +463,8 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
 .ledger-table td.with-icon { display: flex; text-transform: capitalize; }
 @media (max-width: 40rem) { .phrase { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ledger-top { grid-template-columns: minmax(0, 1fr); } }
 
-.gate label.check, .book label.check { display: flex; margin: 0; }
+.gate label.check, .book label.check { display: flex; margin: 0; justify-content: flex-start; }
+.gate .check input, .book .check input { flex: none; width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; border-radius: 4px; }
 
 .market-line { margin: 0; padding: 12px 16px; border-radius: 14px; background: var(--grain), var(--color-mint); font-size: 14px; }
 .market-line a { color: var(--ink); font-weight: 600; }
