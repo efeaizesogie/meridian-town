@@ -5,7 +5,9 @@
 // Policy, per guild:
 //   council (the game's registrar)  approves join requests
 //   member                          proposes and votes on transfers and function calls
-//                                   (bid for a deed, share out, appoint an agent); majority wins
+//                                   (bid for a deed, share out, appoint an agent), and can amend
+//                                   the policy itself by majority, so a guild can always fix it
+//   (Sputnik's permission label for a function call is `call`, not `function_call`.)
 //   everyone                        may ask to join
 // Proposals cost no bond, so players' limited keys can propose and vote without deposits.
 import { readFileSync } from 'node:fs';
@@ -20,14 +22,14 @@ const RPCS = ['https://near-testnet.drpc.org', 'https://testnet-rpc.intea.rs', '
 const DAY_NS = String(24n * 3600n * 1_000_000_000n);
 
 export const GUILDS = [
-  { name: 'hammer-guild', title: 'The Hammer Guild', purpose: 'Smiths, miners and woodcutters of Meridian, pooling coin to own the shops that make the tools.' },
-  { name: 'harvest-guild', title: 'The Harvest Guild', purpose: 'Farmers and bakers of Meridian, pooling coin so the town never goes hungry.' },
+  { name: 'meridian-hammer', title: 'The Hammer Guild', purpose: 'Smiths, miners and woodcutters of Meridian, pooling coin to own the shops that make the tools.' },
+  { name: 'meridian-harvest', title: 'The Harvest Guild', purpose: 'Farmers and bakers of Meridian, pooling coin so the town never goes hungry.' },
 ];
 
 const policy = {
   roles: [
     { name: 'council', kind: { Group: [game] }, permissions: ['add_member_to_role:VoteApprove', 'add_member_to_role:VoteReject', 'add_member_to_role:Finalize', 'remove_member_from_role:*'], vote_policy: {} },
-    { name: 'member', kind: { Group: [] }, permissions: ['*:AddProposal', 'transfer:VoteApprove', 'transfer:VoteReject', 'transfer:Finalize', 'function_call:VoteApprove', 'function_call:VoteReject', 'function_call:Finalize'], vote_policy: {} },
+    { name: 'member', kind: { Group: [] }, permissions: ['*:AddProposal', ...['transfer', 'call', 'policy', 'policy_add_or_update_role', 'policy_remove_role', 'policy_update_default_vote_policy', 'policy_update_parameters'].flatMap(k => [`${k}:VoteApprove`, `${k}:VoteReject`, `${k}:Finalize`])], vote_policy: {} },
     { name: 'all', kind: 'Everyone', permissions: ['add_member_to_role:AddProposal'], vote_policy: {} },
   ],
   default_vote_policy: { weight_kind: 'RoleWeight', quorum: '0', threshold: [1, 2] },

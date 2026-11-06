@@ -89,7 +89,7 @@ Development with hot reload: `npm run server` and `npm run web` (Vite on :5173).
 
 The town runs at [`town.efecode.testnet`](https://testnet.nearblocks.io/address/town.efecode.testnet)
 with 15-minute market days (a Festival every 105 minutes). Guilds:
-`hammer-guild.sputnikv2.testnet` and `harvest-guild.sputnikv2.testnet`. MERI/wNEAR: pool 2901
+`meridian-hammer.sputnikv2.testnet` and `meridian-harvest.sputnikv2.testnet`. MERI/wNEAR: pool 2901
 on Rhea's `ref-finance-101.testnet`.
 
 ```bash

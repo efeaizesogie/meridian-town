@@ -66,6 +66,10 @@ async function readMarket() {
 setInterval(() => readMarket().catch(e => console.error('market', e instanceof Error ? e.message : e)), 60_000).unref();
 setTimeout(() => readMarket().catch(() => {}), 3_000).unref();
 
+// The first two guilds were chartered with a policy whose members couldn't vote on function
+// calls (Sputnik's label is `call`); they stay registered until the owner calls unregister_guild.
+const RETIRED_GUILDS = new Set((process.env.RETIRED_GUILDS ?? 'hammer-guild.sputnikv2.testnet,harvest-guild.sputnikv2.testnet').split(',').filter(Boolean));
+
 let lastSlowRead = 0;
 let guildViews: GuildView[] = [];
 async function pollGuilds() {
@@ -82,7 +86,7 @@ async function readWorld() {
   const slow = Date.now() - lastSlowRead > 30_000;
   const [town, shops, jobs, auctions, caravan, guilds, weeks, clock] = await Promise.all([
     view('get_town'), view('get_shops'), view('get_jobs'), view('get_auctions'), view('get_caravan'),
-    slow || !world ? view('get_guilds') : world.guilds,
+    slow || !world ? view<string[]>('get_guilds').then(ids => ids.filter(id => !RETIRED_GUILDS.has(id))) : world.guilds,
     slow || !world ? view('get_weeks', {}) : world.weeks,
     world?.clock ?? view<[number, number, number]>('get_clock'),
   ]);

@@ -9,3 +9,4 @@ sim/out/
 apps/server/data/
 apps/web/dist/
 deploy.env
+contracts/town/build/

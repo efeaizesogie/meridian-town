@@ -608,3 +608,23 @@ fn catching_up_a_long_backlog_stays_under_the_log_budget() {
         assert!(calls < 200, "advance made no progress");
     }
 }
+
+#[test]
+fn the_owner_can_retire_a_guild() {
+    let mut t = genesis();
+    as_("owner.testnet", T0);
+    t.register_guild(acc("old.sputnik.testnet"));
+    t.register_guild(acc("new.sputnik.testnet"));
+    t.unregister_guild(acc("old.sputnik.testnet"));
+    assert_eq!(t.get_guilds(), vec![acc("new.sputnik.testnet")]);
+}
+
+#[test]
+#[should_panic(expected = "owner")]
+fn strangers_cant_retire_a_guild() {
+    let mut t = genesis();
+    as_("owner.testnet", T0);
+    t.register_guild(acc("old.sputnik.testnet"));
+    as_("mallory.testnet", T0);
+    t.unregister_guild(acc("old.sputnik.testnet"));
+}

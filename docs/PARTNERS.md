@@ -10,7 +10,7 @@ and what each remaining partner is for on the way to mainnet.
 | **NEAR accounts and keys** | Every player is a named sub-account (`juno.game.efecode.testnet`). A play key limited to the town lets them act without wallet pop-ups; a full-access key from their 12 recovery words makes the account theirs. | any player on [testnet nearblocks](https://testnet.nearblocks.io) |
 | **NEP-141, NEP-245, NEP-171** | MERI (coin), goods and shop deeds, in one contract. | `town.efecode.testnet` |
 | **NEAR AI Cloud** | All six merchants decide through it (GLM 5.3 Flash); the town shows their words and reasoning. | the shop panels in the game |
-| **SputnikDAO** | Guilds are Sputnik DAOs registered with the town: players pool MERI, propose, vote and share out. The game's registrar approves join requests. | `hammer-guild.sputnikv2.testnet`, `harvest-guild.sputnikv2.testnet` |
+| **SputnikDAO** | Guilds are Sputnik DAOs registered with the town: players pool MERI, propose, vote and share out. The game's registrar approves join requests. Tested end to end: join, pay in, propose a share-out, vote, paid out. | `meridian-hammer.sputnikv2.testnet`, `meridian-harvest.sputnikv2.testnet` |
 | **Rhea** (Ref Finance's exchange) | A MERI/wNEAR pool gives MERI a market price. The game reads it every minute and every player's ledger shows what their holdings are worth in NEAR. | pool 2901 on `ref-finance-101.testnet` |
 
 The pool was opened and seeded by the team (150 MERI and 1.5 wNEAR) with

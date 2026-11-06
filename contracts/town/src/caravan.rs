@@ -139,6 +139,13 @@ impl Town {
         events::town("guild_registered", json!({ "guild": guild }));
     }
 
+    /// Owner: retire a guild, e.g. one chartered with a policy its members can't act under.
+    pub fn unregister_guild(&mut self, guild: AccountId) {
+        self.assert_owner();
+        require!(self.guilds.remove(&guild), "not a registered guild");
+        events::town("guild_unregistered", json!({ "guild": guild }));
+    }
+
     pub fn get_guilds(&self) -> Vec<AccountId> {
         self.guilds.iter().cloned().collect()
     }
