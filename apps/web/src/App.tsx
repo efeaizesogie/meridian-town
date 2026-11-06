@@ -401,9 +401,9 @@ export default function App() {
               celebrate({ xp: r.xp, levelUp: r.levelUp }, null);
             }} />
             <button className="log-toggle" aria-expanded={logOpen} onClick={() => setLogOpen(o => !o)} title="Your trades, the town crier and who’s about">
-              <Icon name="scroll" /> Log{log.length > 0 && !logOpen ? <span className="dot" aria-hidden /> : null}
+              <Icon name="scroll" /> <span className="lbl">Log</span>{log.length > 0 && !logOpen ? <span className="dot" aria-hidden /> : null}
             </button>
-            <button onClick={() => setModal('ff')} title="Replay the next market week in a minute"><Icon name="forward" /> Fast-forward</button>
+            <button onClick={() => setModal('ff')} title="Replay the next market week in a minute" aria-label="Fast-forward"><Icon name="forward" /> <span className="lbl">Fast-forward</span></button>
           </div>
           {immersive && !logOpen && <CrierPop feed={feed} onOpen={() => openBooks('crier')} />}
         </div>

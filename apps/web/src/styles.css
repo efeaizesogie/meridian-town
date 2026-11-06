@@ -961,3 +961,46 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
   .game.immersive .hud { grid-template-columns: auto minmax(0, 1fr) auto auto; }
   .game.immersive .hud-festival { grid-column: auto; order: 0; }
 }
+
+/* ---------- immersive desktop, mouse users: boxes fold to their essentials and open on hover ---------- */
+@media (hover: hover) and (pointer: fine) {
+  .game.immersive .hud-id, .game.immersive .hud-clock, .game.immersive .hud-festival, .game.immersive .hud-purse,
+  .game.immersive .menu-toggle, .game.immersive .quest, .game.immersive .map-tools button {
+    transition: padding 0.18s var(--ease-snap), box-shadow 0.18s;
+  }
+  /* Who you are: just the avatar. */
+  .game.immersive .hud-id:not(:hover):not(:focus-within) { padding: 8px; min-height: 0; }
+  .game.immersive .hud-id:not(:hover):not(:focus-within) .hud-id-text { display: none; }
+  /* The clock: just the sun or moon. */
+  .game.immersive .hud-clock:not(:hover) { padding: 8px 12px; min-height: 0; align-self: start; height: 54px; }
+  .game.immersive .hud-clock:not(:hover) > div { display: none; }
+  /* The Festival: the countdown and progress in one line. */
+  .game.immersive .hud-festival { width: auto; min-width: 0; }
+  .game.immersive .hud-festival .fest-mini { display: inline; margin-left: 10px; color: var(--ink-2); }
+  .game.immersive .hud-festival:not(:hover):not(:focus-visible) { min-height: 0; padding: 10px 16px; }
+  .game.immersive .hud-festival:not(:hover):not(:focus-visible) .bar,
+  .game.immersive .hud-festival:not(:hover):not(:focus-visible) > .muted { display: none; }
+  .game.immersive .hud-festival:hover, .game.immersive .hud-festival:focus-visible { width: min(360px, 100%); }
+  .game.immersive .hud-festival:hover .fest-mini, .game.immersive .hud-festival:focus-visible .fest-mini { display: none; }
+  /* The purse: the coins, with a thin stamina line until you look closer. */
+  .game.immersive .hud-purse { min-width: 0; }
+  .game.immersive .hud-purse:not(:hover):not(:focus-within) { padding: 8px 14px 10px; min-height: 0; }
+  .game.immersive .hud-purse:not(:hover):not(:focus-within) .stamina { height: 4px; margin-top: 2px; }
+  .game.immersive .hud-purse:not(:hover):not(:focus-within) .stamina span { display: none; }
+  /* The menu: three dots. */
+  .game.immersive .menu-toggle:not(:hover):not(:focus-visible):not(.on) { padding: 0 16px; }
+  .game.immersive .menu-toggle:not(:hover):not(:focus-visible):not(.on) span { display: none; }
+  /* The quest: its heading and progress dots; hover (or click) for the step and its button. */
+  .game.immersive .quest:not(:hover):not(:focus-within):not(.open) { width: auto; padding: 10px 14px; }
+  .game.immersive .quest:not(:hover):not(:focus-within):not(.open) .quest-head { gap: 12px; }
+  .game.immersive .quest:not(:hover):not(:focus-within):not(.open) > strong,
+  .game.immersive .quest:not(:hover):not(:focus-within):not(.open) > p,
+  .game.immersive .quest:not(:hover):not(:focus-within):not(.open) > button { display: none; }
+  .game.immersive .quest:hover p, .game.immersive .quest:focus-within p { display: block; }
+  /* Map tools: icons; each shows its name when you point at it. A ready chest keeps its label. */
+  .game.immersive .map-tools button:not(:hover):not(:focus-visible):not(.chest-btn.ready) .lbl { display: none; }
+  .game.immersive .map-tools button:not(:hover):not(:focus-visible):not(.chest-btn.ready) { padding-left: 12px; padding-right: 12px; gap: 4px; }
+  .game.immersive .hud-id:hover .hud-id-text, .game.immersive .hud-clock:hover > div,
+  .game.immersive .quest:hover > *, .game.immersive .hud-festival:hover .bar { animation: unfold 0.16s var(--ease-snap); }
+  @keyframes unfold { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+}

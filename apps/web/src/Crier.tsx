@@ -228,7 +228,7 @@ export function ChestButton({ world, act, onOpened }: { world: World; act: Act; 
         return `Day ${r.streak} chest: +${r.stamina} stamina, +${r.xp} XP${r.toolUses ? `, and a borrowed tool for ${r.toolUses} swings` : ''}.`;
       })}>
       <Icon name="chest" size={22} />
-      <span>{c.available ? 'Daily chest' : 'Opened'}</span>
+      <span className="lbl">{c.available ? 'Daily chest' : 'Opened'}</span>
       {c.streak > 0 && <span className="streak"><Icon name="flame" size={14} />{c.streak}</span>}
     </button>
   );
