@@ -4,6 +4,7 @@ import type { World } from './App';
 import { isMuted, isMusicOn, setMuted, setMusicOn } from './juice';
 import { fmt, meri, short } from './types';
 import { Icon } from './Icon';
+import type { Step } from './quest';
 
 function useNow(ms = 1000) {
   const [now, setNow] = useState(Date.now());
@@ -120,7 +121,7 @@ export function Hud({ world, account, purseRef, onAccount, onEarnings, onGuide, 
   );
 }
 
-export function QuestTracker({ world, onGo }: { world: World; onGo: () => void }) {
+export function QuestTracker({ world, step, onGo }: { world: World; step: Step | null; onGo: () => void }) {
   const me = world.me;
   if (!me) return null;
   const done = me.quests.filter(q => q.done).length;
@@ -136,8 +137,8 @@ export function QuestTracker({ world, onGo }: { world: World; onGo: () => void }
       {q ? (
         <>
           <strong>{q.title}</strong>
-          <p>{q.hint}</p>
-          <button className="small primary" onClick={onGo}>Show me <span className="xp-pill">+{q.xp} XP</span></button>
+          <p>{step?.text ?? q.hint}</p>
+          <button className="small primary" onClick={onGo}>{step?.go ?? 'Show me'} <span className="xp-pill">+{q.xp} XP</span></button>
         </>
       ) : (
         <p>You’ve learned the town. Now own it: win deeds, lead a guild, keep the Festival streak alive.</p>

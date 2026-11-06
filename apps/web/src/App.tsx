@@ -5,6 +5,7 @@ export type { Params };
 import { Join } from './Join';
 import { AccountPanel, Earnings } from './Account';
 import { Hud, QuestTracker } from './Hud';
+import { nextStep } from './quest';
 import { TownMap, SPOTS, W, H, type Place } from './TownMap';
 import { PlaceDrawer, type Actions } from './Places';
 import { TownLog } from './Panels';
@@ -49,7 +50,7 @@ export interface LogLine {
 export type Act = (label: string, run: () => Promise<string | void>) => Promise<void>;
 
 interface Floater { id: number; x: number; y: number; text: string; kind: 'gain' | 'coin' | 'xp' | 'bad' }
-interface Toast { id: number; text: string; kind: 'quest' | 'level' | 'bad' }
+interface Toast { id: number; text: string; kind: 'quest' | 'level' | 'bad' | 'good' }
 
 /** Where a quest's marker points on the map. */
 function questPlace(world: World): Place | null {
@@ -165,7 +166,9 @@ export default function App() {
   const toast = (text: string, kind: Toast['kind']) => {
     const id = nextId.current++;
     setToasts(t => [...t, { id, text, kind }]);
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), kind === 'quest' ? 3200 : 4500);
+    // A new result replaces an older one of the same kind, so quick actions don't stack up.
+    setToasts(t => (kind === 'good' ? t.filter(x => x.kind !== 'good' || x.id === id) : t));
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), kind === 'good' ? 2600 : kind === 'quest' ? 3200 : 4500);
   };
 
   /** Celebrate what the server says an action earned. */
@@ -192,7 +195,10 @@ export default function App() {
     setBusy(label);
     try {
       const msg = await run();
-      if (msg) say(msg, 'good');
+      if (msg) {
+        say(msg, 'good');
+        toast(msg, 'good');
+      }
       // The action is done once run() returns; a failed refresh afterwards isn't the action failing,
       // and the regular poll picks the new state up a few seconds later.
       await refresh(true).catch(() => {});
@@ -233,7 +239,7 @@ export default function App() {
         else float(p, 'bare!', 'bad');
         celebrate(r, p);
         return r.gathered
-          ? `+${r.gathered} ${r.item}${r.gathered < r.wanted ? ' (the ground is nearly bare)' : ''}`
+          ? `You gathered ${r.gathered} ${r.item}${r.gathered < r.wanted ? '. The ground is nearly bare' : ''}.`
           : `The ground is bare. Try another one.`;
       });
     },
@@ -247,7 +253,7 @@ export default function App() {
         play('coin');
         float(`s:${shop.shop.id}`, `+${fmt(value)} MERI`, 'coin');
         report(hash, `s:${shop.shop.id}`);
-        return `Sold ${n} ${item} to ${shop.shop.name} for ${fmt(value)} MERI`;
+        return `Sold ${n} ${item} to ${shop.shop.name} for ${fmt(value)} MERI.`;
       }),
     buy: (shop, item, qty) =>
       act('Buy', async () => {
@@ -255,7 +261,7 @@ export default function App() {
         const { value } = await call<string>('buy', { shop_id: shop.shop.id, item, quantity: qty, max_total: String((quote * 103n) / 100n) }, 40);
         play('coin');
         float(`s:${shop.shop.id}`, `+${qty} ${item}`, 'gain');
-        return `Bought ${qty} ${item} from ${shop.shop.name} for ${fmt(value)} MERI`;
+        return `Bought ${qty === 1 && item === 'bread' ? 'a loaf' : `${qty} ${item}`} from ${shop.shop.name} for ${fmt(value)} MERI.`;
       }),
     use: item =>
       act(item === 'bread' ? 'Eat' : 'Equip', async () => {
@@ -264,7 +270,7 @@ export default function App() {
         play(item === 'bread' ? 'eat' : 'build');
         float('cottage', item === 'bread' ? '+25 stamina' : 'Double yield', 'gain');
         celebrate(r, 'cottage');
-        return item === 'bread' ? `You eat. Stamina ${Math.round(r.stamina)}.` : `Tool in hand: ${r.toolUses} swings at double yield.`;
+        return item === 'bread' ? `You eat the loaf. Stamina is back to ${Math.round(r.stamina)}.` : `Tool in hand: ${r.toolUses} swings at double yield.`;
       }),
     build: item =>
       act('Build', async () => {
@@ -281,7 +287,7 @@ export default function App() {
         play('coin');
         float('board', `+${fmt(value)} MERI`, 'coin');
         report(hash, 'board');
-        return `Delivered ${qty} ${job.item}: paid ${fmt(value)} MERI from escrow`;
+        return `Delivered ${qty} ${job.item} and got ${fmt(value)} MERI from escrow.`;
       }),
     bid: (shopId, amountMicro) =>
       act('Bid', async () => {
@@ -289,7 +295,7 @@ export default function App() {
         play('bid');
         float('auction', 'Top bid!', 'gain');
         report(hash, 'auction');
-        return `You lead the auction for ${shopId} at ${fmt(amountMicro)} MERI`;
+        return `You lead the auction for ${shopId} at ${fmt(amountMicro)} MERI.`;
       }),
     claim: () =>
       act('Claim', async () => {
@@ -297,11 +303,12 @@ export default function App() {
         play('level');
         float('festival', `+${fmt(value ?? 0)} MERI`, 'coin');
         report(hash, 'festival');
-        return `Festival share: ${fmt(value ?? 0)} MERI`;
+        return `You claimed your Festival share: ${fmt(value ?? 0)} MERI.`;
       }),
   };
 
-  const qp = questPlace(world);
+  const step = nextStep(world);
+  const qp = step?.place ?? questPlace(world);
 
   return (
     <div className="game">
@@ -319,7 +326,7 @@ export default function App() {
               <span key={f.id} className={`floater ${f.kind}`} style={{ left: `${(f.x / W) * 100}%`, top: `${(f.y / H) * 100}%` }}>{f.text}</span>
             ))}
           </div>
-          <QuestTracker world={world} onGo={() => qp && open(qp)} />
+          <QuestTracker world={world} step={step} onGo={() => qp && open(qp)} />
           <div className="map-tools">
             <button onClick={() => setModal('ff')} title="Replay the next market week in a minute"><Icon name="forward" /> Fast-forward</button>
           </div>

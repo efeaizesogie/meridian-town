@@ -62,7 +62,7 @@ function Guild({ g, world, account, busy, act, town, expanded, onToggle }: {
   const propose = (label: string, description: string, kind: object) =>
     act(label, async () => {
       await guildCall(g.id, 'add_proposal', { proposal: { description, kind } }, 30);
-      return `Proposed to ${g.title}: ${description}`;
+      return `Proposed to ${g.title}: ${description}.`;
     });
   const fnCall = (method: string, args: object) => ({
     FunctionCall: { receiver_id: town, actions: [{ method_name: method, args: b64(args), deposit: '0', gas: '35000000000000' }] },
@@ -92,7 +92,7 @@ function Guild({ g, world, account, busy, act, town, expanded, onToggle }: {
                 <input className="small" inputMode="decimal" value={contrib} onChange={e => setContrib(e.target.value)} aria-label="MERI to contribute" />
                 <button className="small" disabled={!!busy} onClick={() => act('Contribute', async () => {
                   await call('pay_guild', { guild: g.id, amount: String(Math.round(Number(contrib) * 1e6)) });
-                  return `Paid ${contrib} MERI into ${g.title}`;
+                  return `You paid ${contrib} MERI into ${g.title}.`;
                 })}>Pay into treasury</button>
               </div>
               <div className="row">
@@ -131,8 +131,8 @@ function Guild({ g, world, account, busy, act, town, expanded, onToggle }: {
                   </div>
                   {canVote && (
                     <div className="row">
-                      <button className="small primary" disabled={!!busy} onClick={() => act('Vote', async () => { await guildCall(g.id, 'act_proposal', { id: p.id, action: 'VoteApprove', proposal: p.kind }, 70); return `Voted for #${p.id}`; })}>For</button>
-                      <button className="small" disabled={!!busy} onClick={() => act('Vote', async () => { await guildCall(g.id, 'act_proposal', { id: p.id, action: 'VoteReject', proposal: p.kind }, 70); return `Voted against #${p.id}`; })}>Against</button>
+                      <button className="small primary" disabled={!!busy} onClick={() => act('Vote', async () => { await guildCall(g.id, 'act_proposal', { id: p.id, action: 'VoteApprove', proposal: p.kind }, 70); return `You voted for proposal ${p.id}.`; })}>For</button>
+                      <button className="small" disabled={!!busy} onClick={() => act('Vote', async () => { await guildCall(g.id, 'act_proposal', { id: p.id, action: 'VoteReject', proposal: p.kind }, 70); return `You voted against proposal ${p.id}.`; })}>Against</button>
                     </div>
                   )}
                 </li>

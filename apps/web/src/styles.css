@@ -485,3 +485,5 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
 /* 3D: a place's name is a button too */
 .label3d span { pointer-events: auto; cursor: pointer; }
 .label3d span:hover { background: var(--color-accent); }
+
+.toast.good { background: var(--grain), var(--color-card); box-shadow: inset 0 0 0 1.5px var(--color-mint-deep), 0 4px 0 0 var(--color-mint), var(--shadow-card); max-width: min(460px, 90vw); font-size: 14px; }
