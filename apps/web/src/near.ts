@@ -183,7 +183,8 @@ const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 export async function api<T>(path: string, body: object = {}): Promise<T> {
   if (!session) throw new Error('not signed in');
   const text = JSON.stringify(body);
-  const ts = Date.now();
+  // The wall clock, even when a recording tool slows the page's clock (see brand/video tooling).
+  const ts = (globalThis as { __realNow?: () => number }).__realNow?.() ?? Date.now();
   const key = KeyPair.fromString(session.secretKey as any);
   const signature = key.sign(new TextEncoder().encode(`meridian|${session.accountId}|${ts}|${text}`)).signature;
   const auth = b64(new TextEncoder().encode(JSON.stringify({ accountId: session.accountId, publicKey: key.getPublicKey().toString(), ts, signature: b64(signature) })));

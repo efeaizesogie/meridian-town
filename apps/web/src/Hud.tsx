@@ -20,11 +20,14 @@ function useCountTo(target: number) {
   const [shown, setShown] = useState(target);
   const from = useRef(target);
   useEffect(() => {
-    const start = performance.now();
+    // Time from the first frame's own timestamp, so the count can't run backwards if the
+    // frame clock and performance.now() disagree.
+    let start: number | null = null;
     const a = from.current;
     let raf = 0;
     const step = (t: number) => {
-      const k = Math.min(1, (t - start) / 700);
+      start ??= t;
+      const k = Math.max(0, Math.min(1, (t - start) / 700));
       const v = a + (target - a) * (1 - Math.pow(1 - k, 3));
       setShown(v);
       if (k < 1) raf = requestAnimationFrame(step);

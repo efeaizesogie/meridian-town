@@ -6,7 +6,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PublicKey, teraToGas } from 'near-api-js';
-import { GAME, NETWORK, RPCS, TOWN, accountExists, advanceTown, createPlayer, game, gatherBatch, hasKey, verifyTownCall, verifyUseItem, provider, view, viewOn, type GatherOrder } from './chain.ts';
+import { GAME, NETWORK, RPCS, TOWN, accountExists, advanceTown, asGame, createPlayer, game, gatherBatch, hasKey, verifyTownCall, verifyUseItem, provider, view, viewOn, type GatherOrder } from './chain.ts';
 import * as players from './players.ts';
 import * as prog from './progression.ts';
 import { PERSONAS, agentAccount, getReports, startAgents } from './agents.ts';
@@ -183,7 +183,7 @@ let markChain: Promise<unknown> = Promise.resolve();
 function chainMark(player: string, mark: string) {
   markChain = markChain.then(async () => {
     try {
-      await game.callFunction({ contractId: TOWN, methodName: 'mint_mark', args: { player, mark }, gas: teraToGas(30) });
+      await asGame(g => g.callFunction({ contractId: TOWN, methodName: 'mint_mark', args: { player, mark }, gas: teraToGas(30) }));
     } catch (e) {
       // An older contract has no mint_mark; the mark still counts in the game.
       console.warn(`[marks] ${player} ${mark}:`, (e instanceof Error ? e.message : String(e)).slice(0, 120));

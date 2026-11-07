@@ -1,15 +1,38 @@
 # Meridian Town
 
-A market-town game where the economy runs itself. Every shopkeeper is an AI agent with
-its own NEAR account; every shop is a deed NFT that *is* that account; the town coin
-mints or burns each week depending on whether the town kept trading.
+**The problem.** In most game economies a developer sets the prices by hand and rewards are coins
+printed from nothing, so the economy needs constant patches and inflates once players stop
+arriving. **Meridian** is a market town where the economy runs itself: six AI shopkeepers, each
+with its own NEAR account and purse, set prices from their own stock and post paid delivery
+jobs; players gather, trade and can end up owning the shops; and the town coin, MERI, is only
+minted when the whole town hits a weekly trading target (and burns when it misses).
 
-Built for NEAR HACKATHON (Nov 2026). Tracks: Games, NFTs, Memecoins, Social Money, AI Swarms.
+Built at NEAR HACKATHON (November 2026). Tracks: Games With Real Economies, Agent Economy,
+NFTs That Do Something, Memecoins With Mechanics, Social Money, AI Swarms.
 
 **Play it now:** https://meridian-town-production.up.railway.app (no wallet needed; you get 12
-recovery words that make the account yours). Built with NEAR AI, SputnikDAO and Rhea; see
-[docs/PARTNERS.md](docs/PARTNERS.md). How players earn, and where that money comes from:
-[docs/ECONOMY.md](docs/ECONOMY.md).
+recovery words that make the account yours). **For judges:** https://meridian-town-production.up.railway.app/judge.
+Built with NEAR AI, SputnikDAO and Rhea; see [docs/PARTNERS.md](docs/PARTNERS.md). How players
+earn, and where that money comes from: [docs/ECONOMY.md](docs/ECONOMY.md).
+
+### Try it in three minutes
+
+| Do | See |
+| --- | --- |
+| Open the play link and type a name | A real NEAR account `<name>.game.efecode.testnet` is created for you, and 12 recovery words that own it |
+| Click **The Fields**, then **Swing ×4** (tap again on the gold notch) | 4 wheat minted to your account on chain; the purse and pack update |
+| Click **Walk to Oswin's Bakery**, then **sell** | MERI paid by the shop's own account; the shopkeeper's NEAR AI reasoning and its transactions show on the shop card |
+| Open **Menu → Town books** | Where every MERI sits, what each week minted or burned, and the town crier feed |
+| On the **Festival Stage**, press **Bet it's hit** or **Ring it** | A stake in the prediction pool, or MERI burned to lift a price for an hour, both on chain |
+| Open **/judge** | Every action as one button with a link to its transaction, and *What if…?* stress tests in fast-forward |
+
+| NEAR piece | Where in Meridian |
+| --- | --- |
+| Smart contract (Rust, near-sdk 5.30) | `town.efecode.testnet`: MERI (NEP-141), goods (NEP-245), shop deeds, Festival badges, soulbound marks and crafted tools (NEP-171) |
+| Named sub-accounts and function-call keys | Every player and each AI shopkeeper; agent keys can call only `set_target`, `post_job`, `expire_job` |
+| NEAR AI Cloud | The shopkeepers' decisions (GLM 5.3 Flash), checked against the limits the contract enforces |
+| SputnikDAO | Two guilds that pool MERI, vote on deed bids and share out weekly bounties |
+| Rhea | A MERI/wNEAR pool that prices MERI; players can cash out through it |
 
 ### For judges: the Inspector’s Desk, five minutes
 
@@ -43,7 +66,7 @@ durability. Every sink burns MERI. See [docs/ECONOMY.md](docs/ECONOMY.md).
 
 ## Try it
 
-Requires Node 22.18+ (TypeScript runs natively; there are no dependencies yet).
+Requires Node 22.18+ (TypeScript runs natively, no build step for the server or simulator).
 
 ```bash
 node sim/run.ts            # 60 days of the town under five scenarios
@@ -144,11 +167,25 @@ To deploy your own: `PARENT=<you>.testnet WASM=<built wasm> ./scripts/deploy-tes
 
 | Path | What |
 | --- | --- |
-| `packages/economy` | The rules engine. The simulator uses it now; later the agents and fast-forward mode will too |
+| `packages/economy` | The rules engine, shared by the simulator and fast-forward; the contract's tests are pinned to its prices |
 | `sim/` | Scenario runner and money trace |
-| `contracts/` | The town contract: NEP-141 coin, NEP-245 goods, shops, delivery contracts, Festival. See [contracts/README.md](contracts/README.md) |
-| `apps/server` | Game server: sign-up, gathering and stamina, the town clock keeper |
-| `apps/web` | The game client (React + near-api-js) |
+| `contracts/` | The town contract: coin, goods, shops, contracts, Festival, deeds, caravan, guilds, and V4 (tips, shop coins, predictions, tournament, boosts, NFTs). 62 tests. See [contracts/README.md](contracts/README.md) |
+| `apps/server` | Game server: sign-up, gathering, the AI shopkeepers, townsfolk, the town clock keeper, crier, shocks, bounties |
+| `apps/web` | The game client (React, three.js, near-api-js) and the Inspector's Desk at `/judge` |
+
+## Hackathon disclosure
+
+- **Built in the window.** The repository starts on 2026-11-03 (first commit: game design and
+  simulator); everything in it, including the NEAR contract and integrations, was built during
+  NEAR HACKATHON. There is no pre-hackathon baseline and no version on another chain.
+- **Libraries.** Contract: `near-sdk` and `near-contract-standards` 5.30. Web: React 19, three.js
+  with `@react-three/fiber`, `drei` and `postprocessing`, `near-api-js` 7.4, `@scure/bip39`,
+  `@noble/curves` and `@noble/hashes`, built with Vite. Server: `near-api-js`. No templates or
+  boilerplate.
+- **Assets.** 3D models: CC0 by Kenney (see [CREDITS.md](CREDITS.md)). Font: Chillax by the
+  Indian Type Foundry (Fontshare, free for commercial use). Music is synthesized in the browser.
+- **AI assistance.** Much of the code was written with Claude Code, directed and reviewed by the
+  team. The in-game shopkeepers use NEAR AI Cloud at runtime.
 
 ## License
 

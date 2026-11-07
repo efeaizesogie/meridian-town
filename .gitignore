@@ -10,3 +10,6 @@ apps/server/data/
 apps/web/dist/
 deploy.env
 contracts/town/build/
+
+# Rendered demo video (too big for git; upload it to YouTube or the submission form)
+brand/video/*.mp4

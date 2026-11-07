@@ -27,7 +27,28 @@ function loadGameKey(): string {
   return json.private_key ?? json.secret_key;
 }
 
-export const game = new Account(GAME, provider, loadGameKey() as any);
+const GAME_KEY = loadGameKey();
+export let game = new Account(GAME, provider, GAME_KEY as any);
+
+const nonceError = (e: unknown) =>
+  [e, ...((e as any)?.errors ?? [])].some(x => /InvalidNonce|Invalid nonce/i.test(x instanceof Error ? `${x.name} ${x.message}` : String(x)));
+
+/**
+ * Run a call signed by the game account. If another server signing with the same key (a second
+ * deployment, a local copy) moved the nonce on, the cached nonce is stale: start a fresh account
+ * object, which reads the current nonce from the chain, and try again.
+ */
+export async function asGame<T>(fn: (acct: Account) => Promise<T>, tries = 3): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return await fn(game);
+    } catch (e) {
+      if (!nonceError(e) || i + 1 >= tries) throw e;
+      game = new Account(GAME, provider, GAME_KEY as any);
+      await new Promise(r => setTimeout(r, 400 + Math.random() * 600));
+    }
+  }
+}
 
 let rpcIndex = 0;
 const benchedUntil = new Map<string, number>(); // endpoint -> ms timestamp it may be used again
@@ -85,7 +106,7 @@ export async function accountExists(accountId: string): Promise<boolean> {
  * account (its coins, goods and deeds) is theirs to take to any NEAR wallet.
  */
 export async function createPlayer(accountId: string, publicKey: string, extraKeys: { receiver: string; publicKey: string; methods: string[] }[] = [], ownerKey?: string) {
-  await game.signAndSendTransaction({
+  await asGame(g => g.signAndSendTransaction({
     receiverId: accountId,
     actions: [
       actions.createAccount(),
@@ -94,7 +115,7 @@ export async function createPlayer(accountId: string, publicKey: string, extraKe
       ...extraKeys.map(k => actions.addFunctionCallAccessKey(PublicKey.fromString(k.publicKey), k.receiver, k.methods, PLAYER_KEY_ALLOWANCE)),
       ...(ownerKey ? [actions.addFullAccessKey(PublicKey.fromString(ownerKey))] : []),
     ],
-  });
+  }));
 }
 
 export async function hasKey(accountId: string, publicKey: string): Promise<boolean> {
@@ -111,16 +132,16 @@ export interface GatherOrder {
 }
 
 export async function gatherBatch(orders: GatherOrder[]): Promise<number[]> {
-  return game.callFunction<number[]>({
+  return asGame(g => g.callFunction<number[]>({
     contractId: TOWN,
     methodName: 'gather_batch',
     args: { orders },
     gas: teraToGas(150),
-  });
+  }));
 }
 
 export async function advanceTown() {
-  await game.callFunction({ contractId: TOWN, methodName: 'advance', args: {}, gas: teraToGas(300) });
+  await asGame(g => g.callFunction({ contractId: TOWN, methodName: 'advance', args: {}, gas: teraToGas(300) }));
 }
 
 /** A finished, successful call by `accountId` on the town: method, args and return value. */
