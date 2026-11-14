@@ -273,7 +273,10 @@ function Cottage({ world, busy, actions }: { world: World; busy: string | null; 
   );
 }
 
+const WEEKS_SHOWN = 4;
+
 function Festival({ world, onClaim, onFastForward }: { world: World; onClaim: () => void; onFastForward: () => void }) {
+  const [showAll, setShowAll] = useState(false);
   const counted = meri(world.town.week_counted);
   const target = meri(world.town.week_target);
   const claimable = BigInt(world.player?.claimable ?? '0');
@@ -290,13 +293,23 @@ function Festival({ world, onClaim, onFastForward }: { world: World; onClaim: ()
       {claimable > 0n && <button className="primary" onClick={onClaim}>Claim your Festival share: {fmt(claimable)} MERI</button>}
       <h3>Past weeks</h3>
       {world.weeks.length === 0 && <p className="empty-note">The first Festival hasn’t happened yet.</p>}
+      {world.weeks.length > 0 && (
+        <p className="muted weeks-summary">
+          {world.weeks.filter(w => w.hit).length} Festivals in {world.weeks.length} weeks
+        </p>
+      )}
       <ul className="weeks">
-        {[...world.weeks].reverse().map(w => (
+        {[...world.weeks].reverse().slice(0, showAll ? undefined : WEEKS_SHOWN).map(w => (
           <li key={w.week} className={w.hit ? 'good' : 'bad'}>
-            Week {w.week + 1}: {w.hit ? `Festival, ${fmt(w.minted, 0)} MERI minted` : `missed, ${fmt(w.burned, 0)} MERI burned`} <span className="muted">({fmt(w.counted, 0)} of {fmt(w.target, 0)})</span>
+            Week {w.week + 1}: {w.hit ? `Festival, ${fmt(w.minted, 0)} minted` : `missed, ${fmt(w.burned, 0)} burned`} <span className="muted">({fmt(w.counted, 0)}/{fmt(w.target, 0)})</span>
           </li>
         ))}
       </ul>
+      {world.weeks.length > WEEKS_SHOWN && (
+        <button className="link weeks-more" onClick={() => setShowAll(s => !s)} aria-expanded={showAll}>
+          {showAll ? 'Show fewer' : `Show all ${world.weeks.length} weeks`}
+        </button>
+      )}
       <button onClick={onFastForward}><Icon name="forward" /> See next week, fast-forwarded</button>
     </div>
   );

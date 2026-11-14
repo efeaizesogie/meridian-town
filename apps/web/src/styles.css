@@ -1013,3 +1013,6 @@ button.coins:hover:not(:disabled) { translate: none; background: var(--color-pap
 @keyframes heft { from { left: 0; transform: translate(-50%, -50%) rotate(-30deg); } to { left: 100%; transform: translate(-50%, -50%) rotate(40deg); } }
 /* A place's panel brings its own controls; the map's buttons step aside while it's open. */
 .game.immersive .stage.with-drawer .map-tools { display: none; }
+
+.weeks-summary { margin: 0 0 4px; font-size: 13px; }
+.weeks-more { justify-self: start; align-self: flex-start; font-size: 13px; margin: 2px 0 8px; }
